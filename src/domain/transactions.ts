@@ -1,4 +1,4 @@
-import type { Transaction, TransactionType } from './types'
+import type { Transaction, TransactionCategory, TransactionType } from './types'
 
 // Returns the signed delta to apply to an account's current_balance.
 // 'transfer' returns 0 — the transfer route handles both sides explicitly.
@@ -50,4 +50,27 @@ export const TX_TYPE_LABELS: Record<TransactionType, string> = {
   transfer: 'Transfer',
   adjustment: 'Penyesuaian',
   refund: 'Pengembalian',
+}
+
+// Sums expense spend for a budget type, including child categories whose
+// parent has that budget_type. budget_type is only set on parent categories
+// (parent_id === ''); children inherit it.
+export function spentForType(
+  bt: string,
+  categories: TransactionCategory[],
+  spentByCategory: Record<string, number>,
+): number {
+  const parentIds = new Set(
+    categories
+      .filter((c) => c.type === 'expense' && !c.parent_id && c.budget_type === bt && !c.deleted_at)
+      .map((c) => c.id),
+  )
+  return categories
+    .filter(
+      (c) =>
+        c.type === 'expense' &&
+        !c.deleted_at &&
+        (parentIds.has(c.id) || (!!c.parent_id && parentIds.has(c.parent_id))),
+    )
+    .reduce((sum, c) => sum + (spentByCategory[c.id] ?? 0), 0)
 }
