@@ -60,6 +60,13 @@ export async function POST(req: Request) {
       return NextResponse.json(fail(hierarchyError), { status: 400 })
     }
 
+    // Children inherit budget_type from parent; root expense categories use form value
+    let budgetType = parsed.data.budget_type ?? ''
+    if (parsed.data.parent_id) {
+      const parent = categories.find((c) => c.id === parsed.data.parent_id)
+      budgetType = parent?.budget_type ?? ''
+    }
+
     const now = new Date().toISOString()
     const category = await categoriesRepo.create({
       id: generateId('category'),
@@ -68,6 +75,7 @@ export async function POST(req: Request) {
       icon: parsed.data.icon,
       color: parsed.data.color,
       parent_id: parsed.data.parent_id,
+      budget_type: budgetType,
       is_system: 'false',
       created_at: now,
       updated_at: now,

@@ -195,7 +195,7 @@ export default function TransactionsPage() {
             >
               <div className="px-5 pb-1.5 pt-3 lg:bg-muted/40 lg:py-2">
                 <p className="text-eyebrow text-muted-foreground">
-                  {format(new Date(date), 'EEEE, d MMMM', { locale: id })}
+                  {format(new Date(date), 'EEEE, d MMMM yyyy', { locale: id })}
                 </p>
               </div>
               <div className="divide-y divide-border bg-surface">

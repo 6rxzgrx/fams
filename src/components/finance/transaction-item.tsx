@@ -51,7 +51,7 @@ export function TransactionItem({ transaction, categories, onClick }: Transactio
         <p className="text-[12px] text-muted-foreground">
           {category ? formatCategoryLabel(category, categories) : TX_TYPE_LABELS[transaction.type]}
           {' · '}
-          {format(new Date(transaction.date), 'd MMM', { locale: id })}
+          {format(new Date(transaction.date), 'd MMMM yyyy', { locale: id })}
         </p>
       </div>
       <MoneyDisplay

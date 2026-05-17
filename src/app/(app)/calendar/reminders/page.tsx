@@ -47,7 +47,7 @@ function formatDueAt(dueAt: string): string {
   const date = new Date(dueAt)
   if (isToday(date)) return `Hari ini · ${format(date, 'HH:mm')}`
   if (isTomorrow(date)) return `Besok · ${format(date, 'HH:mm')}`
-  return format(date, "EEEE, d MMM yyyy · HH:mm", { locale: idLocale })
+  return format(date, "EEEE, d MMMM yyyy · HH:mm", { locale: idLocale })
 }
 
 function dueStatus(dueAt: string, isDone: boolean): 'done' | 'overdue' | 'today' | 'upcoming' {

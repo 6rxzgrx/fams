@@ -55,10 +55,11 @@ export async function POST(req: Request) {
     const now = new Date().toISOString()
     const id = generateId('budget')
 
-    const budget = await budgetsRepo.upsert(parsed.data.month, parsed.data.category_id, {
+    const budget = await budgetsRepo.upsert(parsed.data.month, parsed.data.category_id, parsed.data.budget_type, {
       id,
       month: parsed.data.month,
       category_id: parsed.data.category_id,
+      budget_type: parsed.data.budget_type,
       allocated_amount: String(parsed.data.allocated_amount),
       notes: parsed.data.notes,
       created_by: member.id,

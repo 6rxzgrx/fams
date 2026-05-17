@@ -97,7 +97,7 @@ export function TransactionFilterBar({
   const parentCats = categories.filter((c) => !c.parent_id)
   const childCats = (parentId: string) => categories.filter((c) => c.parent_id === parentId)
 
-  const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des']
+  const MONTH_NAMES = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
   function formatDate(iso: string) {
     const [y, m, d] = iso.split('-')
     return `${d} ${MONTH_NAMES[parseInt(m) - 1]} ${y}`

@@ -14,6 +14,7 @@ import { useFavoriteCategoryIds } from '@/hooks/use-favorite-category-ids'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { CategoryIcon } from '@/components/finance/category-icon'
 import { cn } from '@/lib/utils'
 
 const ALL_CATEGORY_TYPES: CategoryType[] = ['expense', 'income', 'transfer']
@@ -96,11 +97,21 @@ export function TransactionCategoryPicker({
         type="button"
         onClick={() => setOpen(true)}
         className={cn(
-          'flex min-h-12 w-full items-center justify-between rounded-lg border border-input bg-background px-3 py-2 text-left transition-colors hover:bg-muted/40',
+          'flex min-h-12 w-full items-center gap-3 rounded-lg border border-input bg-background px-3 py-2 text-left transition-colors hover:bg-muted/40',
           !selectedCategory && 'text-muted-foreground',
         )}
       >
-        <div className="min-w-0">
+        <span
+          className="inline-flex size-8 shrink-0 items-center justify-center rounded-full"
+          style={{ backgroundColor: selectedCategory?.color ?? '#64748b' }}
+          aria-hidden="true"
+        >
+          <CategoryIcon
+            icon={selectedCategory?.icon ?? 'tag'}
+            className="size-4 text-white"
+          />
+        </span>
+        <div className="min-w-0 flex-1">
           <p className={cn('truncate text-sm font-medium', !selectedCategory && 'font-normal')}>
             {selectedCategory ? formatCategoryLabel(selectedCategory, categories) : placeholder}
           </p>
@@ -250,12 +261,14 @@ export function TransactionCategoryPicker({
                                 aria-hidden="true"
                               />
                             </button>
-                            {/* Color dot */}
+                            {/* Icon circle */}
                             <span
-                              className="inline-flex size-6 shrink-0 rounded-full border border-border/50"
+                              className="inline-flex size-8 shrink-0 items-center justify-center rounded-full"
                               style={{ backgroundColor: branch.parent.color || '#64748b' }}
                               aria-hidden="true"
-                            />
+                            >
+                              <CategoryIcon icon={branch.parent.icon ?? 'tag'} className="size-4 text-white" />
+                            </span>
                             {/* Name + count */}
                             <p className="flex-1 truncate text-sm font-semibold">{branch.parent.name}</p>
                             <span className="shrink-0 text-xs text-muted-foreground">
@@ -279,10 +292,12 @@ export function TransactionCategoryPicker({
                                       className="flex min-w-0 flex-1 items-center gap-2.5 py-2.5 pl-12 pr-3 text-left"
                                     >
                                       <span
-                                        className="inline-flex size-4 shrink-0 rounded-full"
+                                        className="inline-flex size-6 shrink-0 items-center justify-center rounded-full"
                                         style={{ backgroundColor: child.color || '#64748b' }}
                                         aria-hidden="true"
-                                      />
+                                      >
+                                        <CategoryIcon icon={child.icon ?? 'tag'} className="size-3 text-white" />
+                                      </span>
                                       <p className={cn('flex-1 truncate text-sm', childSelected && 'font-semibold text-accent')}>
                                         {child.name}
                                       </p>
@@ -369,10 +384,12 @@ function FlatCategoryRow({
         className="flex min-w-0 flex-1 items-center gap-3 px-4 py-2.5 text-left hover:bg-muted/40"
       >
         <span
-          className="inline-flex size-5 shrink-0 rounded-full"
+          className="inline-flex size-8 shrink-0 items-center justify-center rounded-full"
           style={{ backgroundColor: category.color || '#64748b' }}
           aria-hidden="true"
-        />
+        >
+          <CategoryIcon icon={category.icon ?? 'tag'} className="size-4 text-white" />
+        </span>
         <div className="min-w-0 flex-1">
           <p className={cn('truncate text-sm font-semibold', selected && 'text-accent')}>{label}</p>
           <p className="truncate text-xs text-muted-foreground">

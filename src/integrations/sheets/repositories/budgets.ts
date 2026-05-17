@@ -10,9 +10,9 @@ export class BudgetsRepository extends SheetRepository<Budget> {
     return this.findByField('month', month)
   }
 
-  async upsert(month: string, categoryId: string, data: Record<string, unknown>): Promise<Budget> {
+  async upsert(month: string, categoryId: string, budgetType: string, data: Record<string, unknown>): Promise<Budget> {
     const existing = await this.findByMonth(month)
-    const found = existing.find((b) => b.category_id === categoryId)
+    const found = existing.find((b) => b.category_id === categoryId && (b.budget_type ?? '') === budgetType)
     if (found) {
       return (await this.update(found.id, data)) as Budget
     }

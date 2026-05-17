@@ -3,6 +3,7 @@
 # dependencies
 /node_modules
 /design-system
+/docs
 /.pnp
 .pnp.*
 .yarn/*
@@ -20,6 +21,7 @@
 
 # production
 /build
+
 
 # misc
 .DS_Store
@@ -43,3 +45,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+TELEGRAM_BOT_DEPLOYMENT.md
+CLAUDE.md 
+PROJECT_BRIEF.md

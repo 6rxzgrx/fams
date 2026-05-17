@@ -4,7 +4,7 @@ import { budgetsRepo } from '@/integrations/sheets/repositories/budgets'
 import { categoriesRepo } from '@/integrations/sheets/repositories/transaction-categories'
 import { transactionsRepo } from '@/integrations/sheets/repositories/transactions'
 import { UpdateTransactionCategorySchema, ok, fail } from '@/domain/types'
-import { getCategoryChildren, validateCategoryHierarchy } from '@/domain/categories'
+import { getCategoryChildren, hasCategoryChildren, validateCategoryHierarchy } from '@/domain/categories'
 import { canWrite } from '@/domain/permissions'
 import { writeAudit } from '@/lib/audit'
 import { getSessionMember } from '@/lib/api-helpers'
@@ -49,8 +49,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (parsed.data.icon !== undefined) patch.icon = parsed.data.icon
     if (parsed.data.color !== undefined) patch.color = parsed.data.color
     if (parsed.data.parent_id !== undefined) patch.parent_id = parsed.data.parent_id
+    // budget_type only settable on root categories; children are always synced from parent
+    if (parsed.data.budget_type !== undefined && !existing.parent_id) {
+      patch.budget_type = parsed.data.budget_type
+    }
 
     const updated = await categoriesRepo.update(id, patch)
+
+    // Cascade budget_type change to all children
+    if (patch.budget_type !== undefined && hasCategoryChildren(categories, id)) {
+      const children = getCategoryChildren(categories, id)
+      await Promise.all(children.map((child) => categoriesRepo.update(child.id, { budget_type: patch.budget_type })))
+    }
 
     await writeAudit({
       memberId: member.id,

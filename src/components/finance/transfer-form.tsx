@@ -9,10 +9,12 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { CategoryIcon } from '@/components/finance/category-icon'
 import { MoneyInput } from '@/components/finance/money-input'
 import { TransactionCategoryPicker } from '@/components/finance/transaction-category-picker'
 import { useAccounts } from '@/hooks/use-accounts'
 import { useCategories } from '@/hooks/use-categories'
+import { ASSET_TYPE_ICONS, ASSET_TYPE_COLORS } from '@/domain/constants'
 import { format } from 'date-fns'
 
 interface TransferFormProps {
@@ -71,12 +73,36 @@ export function TransferForm({ defaultFromAccountId, onSubmit, onCancel, loading
           render={({ field }) => (
             <Select value={field.value} onValueChange={field.onChange}>
               <SelectTrigger>
-                <SelectValue placeholder="Pilih akun sumber" />
+                {(() => {
+                  const acc = accounts.find((a) => a.id === field.value)
+                  if (!acc) return <span className="text-muted-foreground">Pilih akun sumber</span>
+                  const icon = acc.icon ?? ASSET_TYPE_ICONS[acc.type] ?? 'wallet'
+                  const color = acc.color ?? ASSET_TYPE_COLORS[acc.type] ?? '#64748b'
+                  return (
+                    <div className="flex items-center gap-2">
+                      <span className="flex size-5 shrink-0 items-center justify-center rounded-full text-white" style={{ backgroundColor: color }}>
+                        <CategoryIcon icon={icon} className="size-3" />
+                      </span>
+                      <span>{acc.name}</span>
+                    </div>
+                  )
+                })()}
               </SelectTrigger>
               <SelectContent>
-                {accounts.map((acc) => (
-                  <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>
-                ))}
+                {accounts.map((acc) => {
+                  const icon = acc.icon ?? ASSET_TYPE_ICONS[acc.type] ?? 'wallet'
+                  const color = acc.color ?? ASSET_TYPE_COLORS[acc.type] ?? '#64748b'
+                  return (
+                    <SelectItem key={acc.id} value={acc.id}>
+                      <div className="flex items-center gap-2">
+                        <span className="flex size-5 shrink-0 items-center justify-center rounded-full text-white" style={{ backgroundColor: color }}>
+                          <CategoryIcon icon={icon} className="size-3" />
+                        </span>
+                        <span>{acc.name}</span>
+                      </div>
+                    </SelectItem>
+                  )
+                })}
               </SelectContent>
             </Select>
           )}
@@ -92,12 +118,36 @@ export function TransferForm({ defaultFromAccountId, onSubmit, onCancel, loading
           render={({ field }) => (
             <Select value={field.value} onValueChange={field.onChange}>
               <SelectTrigger>
-                <SelectValue placeholder="Pilih akun tujuan" />
+                {(() => {
+                  const acc = accounts.find((a) => a.id === field.value)
+                  if (!acc) return <span className="text-muted-foreground">Pilih akun tujuan</span>
+                  const icon = acc.icon ?? ASSET_TYPE_ICONS[acc.type] ?? 'wallet'
+                  const color = acc.color ?? ASSET_TYPE_COLORS[acc.type] ?? '#64748b'
+                  return (
+                    <div className="flex items-center gap-2">
+                      <span className="flex size-5 shrink-0 items-center justify-center rounded-full text-white" style={{ backgroundColor: color }}>
+                        <CategoryIcon icon={icon} className="size-3" />
+                      </span>
+                      <span>{acc.name}</span>
+                    </div>
+                  )
+                })()}
               </SelectTrigger>
               <SelectContent>
-                {accounts.filter((a) => a.id !== fromId).map((acc) => (
-                  <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>
-                ))}
+                {accounts.filter((a) => a.id !== fromId).map((acc) => {
+                  const icon = acc.icon ?? ASSET_TYPE_ICONS[acc.type] ?? 'wallet'
+                  const color = acc.color ?? ASSET_TYPE_COLORS[acc.type] ?? '#64748b'
+                  return (
+                    <SelectItem key={acc.id} value={acc.id}>
+                      <div className="flex items-center gap-2">
+                        <span className="flex size-5 shrink-0 items-center justify-center rounded-full text-white" style={{ backgroundColor: color }}>
+                          <CategoryIcon icon={icon} className="size-3" />
+                        </span>
+                        <span>{acc.name}</span>
+                      </div>
+                    </SelectItem>
+                  )
+                })}
               </SelectContent>
             </Select>
           )}

@@ -1,151 +1,445 @@
 'use client'
 
+import { useState } from 'react'
 import { useForm, Controller, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { CreateAssetSchema, type CreateAssetInput, type Asset } from '@/domain/types'
-import { ASSET_TYPE_LABELS } from '@/domain/constants'
+import { z } from 'zod'
+import { Check, ChevronRight } from 'lucide-react'
+import {
+  LIQUID_ACCOUNT_TYPES,
+  NON_LIQUID_ASSET_TYPES,
+  ACCOUNT_TYPE_LABELS,
+  ASSET_TYPE_LABELS,
+  ASSET_TYPE_ICONS,
+  ASSET_TYPE_COLORS,
+  CATEGORY_ICON_OPTIONS,
+  CATEGORY_COLOR_OPTIONS,
+} from '@/domain/constants'
+import { CategoryIcon } from '@/components/finance/category-icon'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { MoneyInput } from '@/components/finance/money-input'
-import { useAccounts } from '@/hooks/use-accounts'
 import { cn } from '@/lib/utils'
+import type { Account, Asset, CreateAccountInput, CreateAssetInput } from '@/domain/types'
 
-interface AssetFormProps {
-  defaultValues?: Partial<Asset>
-  onSubmit: (data: CreateAssetInput) => Promise<void>
-  onCancel: () => void
-  loading?: boolean
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+type LiquidType = typeof LIQUID_ACCOUNT_TYPES[number]
+type NonLiquidType = typeof NON_LIQUID_ASSET_TYPES[number]
+type AssetCategory = LiquidType | NonLiquidType
+
+function isLiquid(cat: AssetCategory): cat is LiquidType {
+  return (LIQUID_ACCOUNT_TYPES as readonly string[]).includes(cat)
 }
 
-export function AssetForm({ defaultValues, onSubmit, onCancel, loading }: AssetFormProps) {
-  const { accounts } = useAccounts()
+const UnifiedSchema = z.object({
+  icon: z.string().default('briefcase'),
+  color: z.string().default('#64748b'),
+  name: z.string().min(1, 'Nama wajib diisi').max(100),
+  balance: z.number().int().nonnegative('Saldo tidak boleh negatif'),
+  category: z.string().min(1, 'Pilih tipe aset'),
+  include_in_saldo: z.boolean().default(true),
+  notes: z.string().max(500).default(''),
+})
+
+type UnifiedValues = z.infer<typeof UnifiedSchema>
+
+export type UnifiedAssetResult =
+  | { kind: 'account'; data: CreateAccountInput }
+  | { kind: 'asset'; data: CreateAssetInput }
+
+// ─── Default values from existing record ─────────────────────────────────────
+
+type EditTarget =
+  | { kind: 'account'; item: Partial<Account> }
+  | { kind: 'asset'; item: Partial<Asset> }
+
+function toUnifiedDefaults(edit?: EditTarget): Partial<UnifiedValues> {
+  if (!edit) return { icon: 'briefcase', color: '#64748b', balance: 0, include_in_saldo: true }
+  if (edit.kind === 'account') {
+    const a = edit.item
+    return {
+      icon: a.icon ?? 'briefcase',
+      color: a.color ?? '#1e40af',
+      name: a.name ?? '',
+      balance: a.current_balance ? parseInt(a.current_balance, 10) : 0,
+      category: a.type ?? '',
+      include_in_saldo: a.include_in_saldo !== 'false',
+      notes: a.notes ?? '',
+    }
+  }
+  const a = edit.item
+  return {
+    icon: a.icon ?? 'briefcase',
+    color: a.color ?? '#64748b',
+    name: a.name ?? '',
+    balance: a.value ? parseInt(a.value, 10) : 0,
+    category: a.type ?? '',
+    include_in_saldo: a.include_in_saldo === 'true',
+    notes: a.notes ?? '',
+  }
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
+interface AssetFormProps {
+  defaultEdit?: EditTarget
+  onSubmit: (result: UnifiedAssetResult) => Promise<void>
+  onCancel: () => void
+  onDelete?: () => void
+  loading?: boolean
+  deleting?: boolean
+}
+
+export function AssetForm({
+  defaultEdit,
+  onSubmit,
+  onCancel,
+  onDelete,
+  loading,
+  deleting,
+}: AssetFormProps) {
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [typePickerOpen, setTypePickerOpen] = useState(false)
+
+  const defaults = toUnifiedDefaults(defaultEdit)
+  const isEditing = !!defaultEdit
 
   const {
     register,
     handleSubmit,
     control,
+    watch,
+    setValue,
     formState: { errors },
-  } = useForm<CreateAssetInput>({
-    resolver: zodResolver(CreateAssetSchema) as Resolver<CreateAssetInput>,
+  } = useForm<UnifiedValues>({
+    resolver: zodResolver(UnifiedSchema) as Resolver<UnifiedValues>,
     defaultValues: {
-      name: defaultValues?.name ?? '',
-      type: (defaultValues?.type as CreateAssetInput['type']) ?? 'other',
-      value: defaultValues?.value ? parseInt(defaultValues.value, 10) : 0,
-      currency: defaultValues?.currency ?? 'IDR',
-      account_id: defaultValues?.account_id ?? '',
-      include_in_saldo: defaultValues?.include_in_saldo === 'true',
-      notes: defaultValues?.notes ?? '',
+      icon: defaults.icon ?? 'briefcase',
+      color: defaults.color ?? '#64748b',
+      name: defaults.name ?? '',
+      balance: defaults.balance ?? 0,
+      category: defaults.category ?? '',
+      include_in_saldo: defaults.include_in_saldo ?? true,
+      notes: defaults.notes ?? '',
     },
   })
 
+  const selectedColor = watch('color')
+  const selectedIcon = watch('icon')
+  const selectedCategory = watch('category') as AssetCategory | ''
+  const includeInSaldo = watch('include_in_saldo')
+
+  const categoryLabel = selectedCategory
+    ? (ACCOUNT_TYPE_LABELS[selectedCategory] ?? ASSET_TYPE_LABELS[selectedCategory] ?? selectedCategory)
+    : 'Pilih tipe aset'
+
+  async function onValid(values: UnifiedValues) {
+    const cat = values.category as AssetCategory
+    if (isLiquid(cat)) {
+      await onSubmit({
+        kind: 'account',
+        data: {
+          name: values.name,
+          type: cat,
+          current_balance: values.balance,
+          icon: values.icon,
+          color: values.color,
+          include_in_saldo: values.include_in_saldo,
+          notes: values.notes,
+          currency: 'IDR',
+          bank_name: '',
+          account_number: '',
+        },
+      })
+    } else {
+      await onSubmit({
+        kind: 'asset',
+        data: {
+          name: values.name,
+          type: cat as NonLiquidType,
+          value: values.balance,
+          icon: values.icon,
+          color: values.color,
+          include_in_saldo: values.include_in_saldo,
+          notes: values.notes,
+          currency: 'IDR',
+          account_id: '',
+        },
+      })
+    }
+  }
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <div className="space-y-2">
-        <Label>Nama Aset</Label>
-        <Input placeholder="cth. Motor Honda Vario" {...register('name')} />
-        {errors.name && <p className="text-xs text-danger">{errors.name.message}</p>}
-      </div>
+    <>
+      <form onSubmit={handleSubmit(onValid)} className="space-y-4">
 
-      <div className="space-y-2">
-        <Label>Jenis</Label>
-        <Controller
-          name="type"
-          control={control}
-          render={({ field }) => (
-            <Select value={field.value} onValueChange={field.onChange}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(ASSET_TYPE_LABELS).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>{label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label>Nilai Estimasi</Label>
-        <Controller
-          name="value"
-          control={control}
-          render={({ field }) => <MoneyInput value={field.value} onChange={field.onChange} />}
-        />
-        {errors.value && <p className="text-xs text-danger">{errors.value.message}</p>}
-      </div>
-
-      {accounts.length > 0 && (
-        <div className="space-y-2">
-          <Label>Tautkan ke Akun (opsional)</Label>
-          <Controller
-            name="account_id"
-            control={control}
-            render={({ field }) => (
-              <Select value={field.value || '__none__'} onValueChange={(v) => field.onChange(v === '__none__' ? '' : v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Pilih akun (opsional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">Tidak ditautkan</SelectItem>
-                  {accounts.map((acc) => (
-                    <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          />
+        {/* Row 1: icon+color | nama aset */}
+        <div className="flex items-start gap-3">
+          <button
+            type="button"
+            onClick={() => setPickerOpen(true)}
+            className="mt-0.5 flex size-12 shrink-0 items-center justify-center rounded-2xl ring-2 ring-transparent transition-all hover:ring-border focus:outline-none focus:ring-border"
+            style={{ backgroundColor: selectedColor }}
+            aria-label="Pilih ikon dan warna"
+          >
+            <CategoryIcon icon={selectedIcon} className="size-5 text-white drop-shadow-sm" />
+          </button>
+          <div className="flex-1 space-y-1">
+            <Input placeholder="cth. BCA Tabungan" autoFocus {...register('name')} />
+            {errors.name && <p className="text-xs text-danger">{errors.name.message}</p>}
+          </div>
         </div>
-      )}
 
-      <div className="space-y-2">
-        <Label>Hitung ke Saldo</Label>
-        <Controller
-          name="include_in_saldo"
-          control={control}
-          render={({ field }) => (
+        {/* Row 2: saldo awal */}
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">Saldo Awal</Label>
+          <Controller
+            name="balance"
+            control={control}
+            render={({ field }) => <MoneyInput value={field.value} onChange={field.onChange} />}
+          />
+          {errors.balance && <p className="text-xs text-danger">{errors.balance.message}</p>}
+        </div>
+
+        {/* Row 3: tipe aset | include/exclude */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Tipe Aset</Label>
             <button
               type="button"
-              role="switch"
-              aria-checked={field.value}
-              onClick={() => field.onChange(!field.value)}
+              disabled={isEditing}
+              onClick={() => setTypePickerOpen(true)}
               className={cn(
-                'flex w-full items-center justify-between rounded-lg border px-4 py-3 text-sm transition-colors',
-                field.value ? 'border-accent bg-accent-soft' : 'border-border bg-muted/30',
+                'flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-sm transition-colors',
+                isEditing
+                  ? 'cursor-default border-border bg-muted/30 text-foreground'
+                  : 'border-border bg-background hover:bg-muted/40',
+                selectedCategory ? 'text-foreground' : 'text-muted-foreground',
               )}
             >
-              <span className="text-muted-foreground">Masukkan nilai ke total saldo</span>
-              <div className={cn(
-                'relative h-5 w-9 rounded-full transition-colors',
-                field.value ? 'bg-accent' : 'bg-muted',
-              )}>
-                <div className={cn(
-                  'absolute top-0.5 size-4 rounded-full bg-white shadow transition-transform',
-                  field.value ? 'translate-x-4' : 'translate-x-0.5',
-                )} />
+              <div className="flex items-center gap-2 min-w-0">
+                {selectedCategory && (
+                  <span
+                    className="flex size-5 shrink-0 items-center justify-center rounded-full"
+                    style={{ backgroundColor: ASSET_TYPE_COLORS[selectedCategory] ?? '#64748b' }}
+                  >
+                    <CategoryIcon icon={ASSET_TYPE_ICONS[selectedCategory] ?? 'briefcase'} className="size-3 text-white" />
+                  </span>
+                )}
+                <span className="truncate">{categoryLabel}</span>
               </div>
+              {!isEditing && <ChevronRight className="size-4 shrink-0 text-muted-foreground" strokeWidth={2} />}
             </button>
-          )}
-        />
-      </div>
+            {errors.category && <p className="text-xs text-danger">{errors.category.message}</p>}
+          </div>
 
-      <div className="space-y-2">
-        <Label>Catatan (opsional)</Label>
-        <Textarea placeholder="Catatan tambahan..." {...register('notes')} rows={2} />
-      </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Hitung ke Saldo</Label>
+            <Controller
+              name="include_in_saldo"
+              control={control}
+              render={({ field }) => (
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={field.value}
+                  onClick={() => field.onChange(!field.value)}
+                  className={cn(
+                    'flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-sm transition-colors',
+                    field.value ? 'border-accent bg-accent-soft' : 'border-border bg-muted/30',
+                  )}
+                >
+                  <span className={field.value ? 'text-accent font-medium' : 'text-muted-foreground'}>
+                    {field.value ? 'Termasuk' : 'Dikecualikan'}
+                  </span>
+                  <div className={cn('relative h-5 w-9 rounded-full transition-colors', field.value ? 'bg-accent' : 'bg-muted')}>
+                    <div className={cn(
+                      'absolute top-0.5 size-4 rounded-full bg-white shadow transition-transform',
+                      field.value ? 'translate-x-4' : 'translate-x-0.5',
+                    )} />
+                  </div>
+                </button>
+              )}
+            />
+          </div>
+        </div>
 
-      <div className="flex gap-2 pt-2">
-        <Button type="button" variant="outline" className="flex-1" onClick={onCancel} disabled={loading}>
-          Batal
-        </Button>
-        <Button type="submit" className="flex-1" disabled={loading}>
-          {loading ? 'Menyimpan...' : 'Simpan'}
-        </Button>
+        {/* Row 4: catatan */}
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">Catatan (opsional)</Label>
+          <Textarea placeholder="Catatan tambahan..." {...register('notes')} rows={2} />
+        </div>
+
+        {/* Row 5: batal + simpan */}
+        <div className="flex gap-2 pt-1">
+          <Button type="button" variant="outline" className="flex-1" onClick={onCancel} disabled={loading}>
+            Batal
+          </Button>
+          <Button type="submit" className="flex-1" disabled={loading}>
+            {loading ? 'Menyimpan...' : 'Simpan'}
+          </Button>
+        </div>
+
+        {onDelete && (
+          <Button
+            type="button"
+            variant="destructive"
+            className="w-full"
+            onClick={onDelete}
+            disabled={deleting || loading}
+          >
+            {deleting ? 'Menghapus...' : 'Hapus'}
+          </Button>
+        )}
+      </form>
+
+      {/* Icon + Color Picker */}
+      <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Ikon &amp; Warna</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex justify-center">
+              <div className="flex size-16 items-center justify-center rounded-2xl" style={{ backgroundColor: selectedColor }}>
+                <CategoryIcon icon={selectedIcon} className="size-7 text-white drop-shadow-sm" />
+              </div>
+            </div>
+            <div>
+              <p className="mb-2 text-xs font-medium text-muted-foreground">Ikon</p>
+              <div className="grid grid-cols-8 gap-1">
+                {CATEGORY_ICON_OPTIONS.map((icon) => (
+                  <button
+                    key={icon}
+                    type="button"
+                    onClick={() => setValue('icon', icon)}
+                    className={cn(
+                      'flex size-9 items-center justify-center rounded-lg transition-colors',
+                      selectedIcon === icon
+                        ? 'bg-accent text-accent-foreground ring-2 ring-accent'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                    )}
+                    aria-label={icon}
+                  >
+                    <CategoryIcon icon={icon} className="size-4" />
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="mb-2 text-xs font-medium text-muted-foreground">Warna</p>
+              <div className="flex flex-wrap gap-2">
+                {CATEGORY_COLOR_OPTIONS.map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    onClick={() => setValue('color', color)}
+                    className="relative size-8 rounded-full transition-transform hover:scale-110"
+                    style={{ backgroundColor: color }}
+                    aria-label={`Pilih warna ${color}`}
+                  >
+                    {selectedColor === color && (
+                      <Check className="absolute inset-0 m-auto size-4 text-white drop-shadow" strokeWidth={3} aria-hidden="true" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <Button className="w-full" onClick={() => setPickerOpen(false)}>Selesai</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Tipe Aset Picker */}
+      <Dialog open={typePickerOpen} onOpenChange={setTypePickerOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Pilih Tipe Aset</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <AssetCategorySection
+              title="Aset Likuid"
+              description="Dapat digunakan langsung untuk transaksi"
+              types={LIQUID_ACCOUNT_TYPES as unknown as string[]}
+              labels={ACCOUNT_TYPE_LABELS}
+              selectedCategory={selectedCategory}
+              onSelect={(cat) => {
+                setValue('category', cat)
+                setValue('icon', ASSET_TYPE_ICONS[cat] ?? 'briefcase')
+                setValue('color', ASSET_TYPE_COLORS[cat] ?? '#64748b')
+                setTypePickerOpen(false)
+              }}
+            />
+            <AssetCategorySection
+              title="Aset Non-Likuid"
+              description="Investasi dan aset yang tidak untuk transaksi harian"
+              types={NON_LIQUID_ASSET_TYPES as unknown as string[]}
+              labels={ASSET_TYPE_LABELS}
+              selectedCategory={selectedCategory}
+              onSelect={(cat) => {
+                setValue('category', cat)
+                setValue('icon', ASSET_TYPE_ICONS[cat] ?? 'briefcase')
+                setValue('color', ASSET_TYPE_COLORS[cat] ?? '#64748b')
+                setTypePickerOpen(false)
+              }}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}
+
+function AssetCategorySection({
+  title,
+  description,
+  types,
+  labels,
+  selectedCategory,
+  onSelect,
+}: {
+  title: string
+  description: string
+  types: string[]
+  labels: Record<string, string>
+  selectedCategory: string
+  onSelect: (cat: string) => void
+}) {
+  return (
+    <div>
+      <p className="mb-0.5 text-sm font-semibold">{title}</p>
+      <p className="mb-2 text-xs text-muted-foreground">{description}</p>
+      <div className="space-y-1">
+        {types.map((type) => {
+          const isSelected = selectedCategory === type
+          const icon = ASSET_TYPE_ICONS[type] ?? 'briefcase'
+          const color = ASSET_TYPE_COLORS[type] ?? '#64748b'
+          return (
+            <button
+              key={type}
+              type="button"
+              onClick={() => onSelect(type)}
+              className={cn(
+                'flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors',
+                isSelected ? 'border-accent bg-accent-soft' : 'border-border hover:bg-muted/40',
+              )}
+            >
+              <span
+                className="flex size-8 shrink-0 items-center justify-center rounded-full"
+                style={{ backgroundColor: color }}
+              >
+                <CategoryIcon icon={icon} className="size-4 text-white" />
+              </span>
+              <span className="flex-1 text-sm font-medium">{labels[type] ?? type}</span>
+              {isSelected && <Check className="size-4 shrink-0 text-accent" strokeWidth={2.5} />}
+            </button>
+          )
+        })}
       </div>
-    </form>
+    </div>
   )
 }

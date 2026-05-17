@@ -8,14 +8,17 @@ export type Role = z.infer<typeof RoleSchema>
 export const TransactionTypeSchema = z.enum(['income', 'expense', 'transfer', 'adjustment', 'refund'])
 export type TransactionType = z.infer<typeof TransactionTypeSchema>
 
-export const AccountTypeSchema = z.enum(['cash', 'bank', 'ewallet', 'loan', 'investment'])
+export const AccountTypeSchema = z.enum(['cash', 'bank', 'ewallet', 'loan', 'investment', 'prepaid_card'])
 export type AccountType = z.infer<typeof AccountTypeSchema>
 
-export const AssetTypeSchema = z.enum(['property', 'vehicle', 'gold', 'electronics', 'jewelry', 'other'])
+export const AssetTypeSchema = z.enum(['investment', 'precious_metal', 'stocks', 'crypto', 'real_asset', 'business'])
 export type AssetType = z.infer<typeof AssetTypeSchema>
 
 export const CategoryTypeSchema = z.enum(['income', 'expense', 'transfer'])
 export type CategoryType = z.infer<typeof CategoryTypeSchema>
+
+export const BudgetTypeSchema = z.enum(['needs', 'savings', 'wants', 'sedekah'])
+export type BudgetType = z.infer<typeof BudgetTypeSchema>
 
 // ─── Family Member ────────────────────────────────────────────────────────────
 
@@ -79,12 +82,14 @@ export type UpdateAccountInput = z.infer<typeof UpdateAccountSchema>
 export const AssetSchema = z.object({
   id: z.string(),
   name: z.string(),
-  type: AssetTypeSchema,
+  type: AssetTypeSchema.catch('real_asset'),
   value: z.string().default('0'),
   currency: z.string().default('IDR'),
   account_id: z.string().optional().default(''),
   include_in_saldo: z.string().optional().default('false'),
   notes: z.string().optional().default(''),
+  icon: z.string().optional().default('briefcase'),
+  color: z.string().optional().default('#64748b'),
   created_by: z.string(),
   created_at: z.string(),
   updated_at: z.string(),
@@ -101,6 +106,8 @@ export const CreateAssetSchema = z.object({
   account_id: z.string().default(''),
   include_in_saldo: z.boolean().default(false),
   notes: z.string().max(500).default(''),
+  icon: z.string().default('briefcase'),
+  color: z.string().default('#64748b'),
 })
 
 export type CreateAssetInput = z.infer<typeof CreateAssetSchema>
@@ -117,6 +124,7 @@ export const TransactionCategorySchema = z.object({
   icon: z.string().optional().default('tag'),
   color: z.string().optional().default('#64748b'),
   parent_id: z.string().optional().default(''),
+  budget_type: z.string().optional().default(''),
   is_system: z.string().default('true'),
   created_at: z.string(),
   updated_at: z.string(),
@@ -131,6 +139,7 @@ export const CreateTransactionCategorySchema = z.object({
   icon: z.string().max(50).default('tag'),
   color: z.string().max(30).default('#64748b'),
   parent_id: z.string().default(''),
+  budget_type: z.string().default(''),
 })
 
 export type CreateTransactionCategoryInput = z.infer<typeof CreateTransactionCategorySchema>
@@ -254,8 +263,9 @@ export type UpdateReminderInput = z.infer<typeof UpdateReminderSchema>
 export const BudgetSchema = z.object({
   id: z.string(),
   month: z.string(), // YYYY-MM
-  category_id: z.string().optional().default(''), // empty = total monthly budget
-  allocated_amount: z.string().default('0'),
+  category_id: z.string().optional().default(''), // empty = total or type-level budget
+  budget_type: z.string().optional().default(''), // empty = total; needs/savings/wants/sedekah = type allocation
+  allocated_amount: z.string().default('0'), // IDR for total; percentage (0-100) for type/category allocations
   notes: z.string().optional().default(''),
   created_by: z.string(),
   created_at: z.string(),
@@ -268,6 +278,7 @@ export type Budget = z.infer<typeof BudgetSchema>
 export const CreateBudgetSchema = z.object({
   month: z.string().regex(/^\d{4}-\d{2}$/, 'Format bulan tidak valid (YYYY-MM)'),
   category_id: z.string().default(''),
+  budget_type: z.string().default(''),
   allocated_amount: z.number().int().nonnegative('Anggaran tidak boleh negatif'),
   notes: z.string().max(500).default(''),
 })

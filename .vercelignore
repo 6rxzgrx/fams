@@ -1,0 +1,5 @@
+bot/index.ts
+bot/*.ts
+# Keep bot/commands/ and bot/state.ts since they're imported by the webhook route
+!bot/commands/
+!bot/state.ts

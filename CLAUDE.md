@@ -1,11 +1,13 @@
 # FAMS — Project Context for Claude Code
-**Last updated: 2026-05-15** · Personal finance PWA for one family
+
+**Last updated: 2026-05-17** · Personal finance PWA for one family
 
 ---
 
 ## What Is FAMS?
 
 FAMS (Family Asset & Money System) is a **private, mobile-first Progressive Web App (PWA)** designed for a single family to:
+
 - Track income, expenses, and cash flow
 - Manage assets (cash, bank accounts, vehicles, property, gold, electronics, etc.)
 - Track bills with due dates and payment history
@@ -20,346 +22,486 @@ FAMS (Family Asset & Money System) is a **private, mobile-first Progressive Web 
 
 ---
 
-## Project Status & Tech Stack (REVISED)
+## Project Status & Tech Stack
 
-| Aspect | Details |
-|--------|---------|
-| **Status** | MVP scaffolding in progress (Week 0-1) |
-| **Frontend** | Next.js 16 (App Router) + React 19 |
-| **Styling** | Tailwind CSS v4 (@tailwindcss/postcss) + shadcn/ui |
-| **Language** | TypeScript (strict mode) |
-| **Data Backend** | Google Sheets (single spreadsheet, 16 tabs) |
-| **File Storage** | Google Drive (family folder for receipts/attachments) |
-| **Calendar** | Google Calendar (reminders sync) |
-| **Image-to-Data** | **Google Gemini API** (vision + structured extraction) |
-| **Auth** | NextAuth.js + Google OAuth |
-| **Deployment** | Vercel free tier (supports Next.js API routes + cron) |
-| **Fonts** | Geist Sans + Geist Mono (via next/font/google, display: swap) |
-| **PWA** | next-pwa with offline read cache + IndexedDB write queue |
-| **Rate Limiting** | In-memory sliding window + Sheets query fallback (no Redis) |
-| **Cost** | ~$1–2/month (APIs on free tier) |
-
----
-
-## Key Revisions from Original Spec
-
-### 1. **Use Google Gemini API instead of Anthropic Claude for bill extraction**
-
-**Why:** Gemini Vision has a more generous free tier (1500 free API calls/month) and is optimized for structured JSON output.
-
-**Configuration:**
-- Get API key at [aistudio.google.com](https://aistudio.google.com)
-- Store in `.env.GEMINI_API_KEY`
-- Model: `gemini-2.0-flash` (fast, cheap, vision-capable)
-- System prompt cached (Anthropic SDK style) to reduce per-call cost
-
-**Cost:** ~$0.002 per image extraction. For 100 scans/month = ~$0.20.
-
-**Swappable:** `src/integrations/ai/client.ts` wraps provider logic. Can swap to Claude/OpenAI later without changing domain code.
-
-**Implementation in `src/integrations/ai/providers/gemini.ts`:**
-```typescript
-// Provider abstraction — all domain code calls ai/client.ts
-async function extractBill(image: Buffer): Promise<BillExtraction> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-  const base64 = image.toString('base64');
-  
-  const result = await model.generateContent([
-    { inlineData: { mimeType: 'image/jpeg', data: base64 } },
-    { text: cachedBillExtractionPrompt() }
-  ]);
-  
-  const json = JSON.parse(result.response.text());
-  return BillExtractionSchema.parse(json);
-}
-```
-
-### 2. **No Redis for rate limiting or caching**
-
-**Why:** Adds operational complexity. For MVP, simple in-memory sliding-window counter is sufficient.
-
-**Rate limiting approach:**
-- Track requests in memory (per-member, per endpoint).
-- Fallback: query `audit_logs` sheet for last 60 writes in past 60 seconds.
-- Limits: 60 writes/min, 30 AI calls/hour, 30 GB Drive uploads/month.
-- Return 429 if exceeded; include `Retry-After` header.
-
-**Caching approach:**
-- Next.js `unstable_cache()` with `revalidateTag()` on mutations.
-- TTL: 30 seconds for list views, 5 minutes for dashboard aggregates.
-- No Redis, no Upstash required.
-
-**Future migration:** If needed, add Upstash Redis free tier (first 100 commands/day free) or an in-memory store with memory bounds.
+| Aspect             | Details                                                                |
+| ------------------ | ---------------------------------------------------------------------- |
+| **Status**         | Week ~5 — Core finance modules complete; calendar/scanning/offline WIP |
+| **Frontend**       | Next.js 16.2.6 (App Router) + React 19.2.4                             |
+| **React Compiler** | Enabled (`reactCompiler: true` in next.config.ts)                      |
+| **Styling**        | Tailwind CSS v4 + shadcn/ui                                            |
+| **Language**       | TypeScript 5 (strict mode)                                             |
+| **Data Backend**   | Google Sheets (single spreadsheet, ~14 tabs active)                    |
+| **File Storage**   | Google Drive (family folder for receipts/attachments)                  |
+| **Calendar**       | Google Calendar (one-way push via API)                                 |
+| **Image-to-Data**  | Google Gemini API (`gemini-2.0-flash`, vision + structured extraction) |
+| **Auth**           | NextAuth.js v4 + Google OAuth                                          |
+| **Telegram Bot**   | Grammy v1 — quick commands (saldo, add transaction, assets, budget)    |
+| **Deployment**     | Vercel free tier                                                       |
+| **Fonts**          | Geist Sans + Geist Mono (via `next/font/google`, display: swap)        |
+| **PWA**            | Manifest present; service worker / offline queue not yet wired         |
+| **Rate Limiting**  | In-memory sliding window + Sheets fallback (no Redis)                  |
+| **State**          | SWR v2 for client-side data fetching                                   |
+| **Forms**          | react-hook-form v7 + Zod v4 resolvers                                  |
+| **Notifications**  | Sonner (toast)                                                         |
+| **Cost**           | ~$1–2/month (Gemini API only paid service)                             |
 
 ---
 
 ## Architecture Overview
 
 ### Layers (clean separation)
-1. **API routes** (`app/api/**`) — thin, delegate to domain.
-2. **Domain logic** (`src/domain/**`) — pure, no framework, no I/O.
+
+1. **API routes** (`src/app/api/**`) — thin, delegate to domain + repositories.
+2. **Domain logic** (`src/domain/**`) — pure functions, no framework, no I/O.
 3. **Repository/Integration** (`src/integrations/**`) — Sheets/Drive/Calendar/AI.
-4. **UI/Pages** (`app/(app)/**`) — React components, call API routes, SWR for state.
-5. **Lib/Utils** (`src/lib/**`) — helpers (money, audit, auth, logger).
+4. **UI/Pages** (`src/app/(app)/**`) — React components, call API routes, SWR for state.
+5. **Lib/Utils** (`src/lib/**`) — money, audit, auth, logger, rate-limit, env.
 
 ### Key Patterns
+
 - **No secrets in client.** All Google/AI calls are server-side only.
-- **Zod validation at boundaries.** API routes validate request bodies.
-- **Audit every write.** `writeAudit()` called after mutations.
+- **Zod validation at boundaries.** API routes validate all request bodies.
+- **Audit every write.** `writeAudit()` called after every mutation.
 - **Soft deletes.** Never hard-delete; mark `deleted_at`.
-- **ULIDs for IDs.** Time-sortable, unique, prefix-able (`tx_…`, `bill_…`, etc.).
+- **ULIDs for IDs.** Time-sortable with prefixes (`tx_`, `bill_`, `mem_`, etc.).
+- **Response shape:** `{ ok: true, data }` or `{ ok: false, error }` from all API routes.
+- **Permissions first.** `canWrite(member, module)` checked before any mutation.
 
 ---
 
-## Detailed Project Structure
+## Implementation Status
+
+### ✅ Fully Implemented
+
+- **Auth** — NextAuth + Google OAuth, session management, onboarding flow
+- **Finance / Transactions** — Full CRUD, filters (category/date/account), period picker, audit
+- **Finance / Accounts** — Bank, cash, e-wallet, loan CRUD; transfer form
+- **Finance / Assets** — Property, vehicle, gold, electronics CRUD; grouped view
+- **Finance / Bills** — Recurring bills + payment history
+- **Finance / Budgets** — Budget/category setup, monthly budget tracking
+- **Dashboard** — 5-card summary (total balance, monthly income/expense, budgets, recent transactions)
+- **Settings / Members** — Member CRUD + role assignment
+- **Settings / Audit Log** — Append-only change log view
+- **Settings / Finance Setup** — Category and budget management
+- **Google Sheets integration** — Base repository + 11 entity repositories, all 14 tabs mapped
+- **Google Calendar integration** — Push and delete events (one-way)
+- **Rate limiting** — In-memory sliding window (60 writes/min, 30 AI calls/hr)
+- **Audit trail** — `writeAudit()` + retrieval API
+- **Navigation** — Desktop sidebar + mobile bottom pill + FAB with quick-add sheet
+- **Dark mode** — System preference + manual toggle (ThemeProvider)
+- **Telegram bot** — 4 commands: `/catat`, `/saldo`, `/anggaran`, `/assets`; polling (local dev) + webhook (Vercel production)
+
+### 🚧 Skeleton / Partial
+
+- **Bill scanning** (`/api/ai/extract`, `/scan`) — Endpoint exists, UI not built
+- **Reminders** — API CRUD done; Google Calendar sync map exists; UI skeleton
+- **Calendar views** (`/calendar/*`) — Page shells only
+- **Notes** (`/other/notes`) — Shell only
+- **Maintenance** (`/other/maintenance`) — Shell only
+- **Vault** (`/other/vault`) — Shell only
+- **Reports** (`/finance/reports`) — Planned v1.2
+- **Notifications hub** (`/notifications`) — Route exists, no content
+
+### ❌ Not Yet Started
+
+- **PWA service worker + offline write queue** — Manifest exists; SW and IndexedDB queue not wired
+- **Unit/e2e tests** — Vitest and Playwright configured; no test specs written
+- **CSV/PDF export**
+- **Two-way calendar sync**
+- **Web Push notifications**
+
+---
+
+## Project Structure (Actual)
 
 ```
 fams/
-├── CLAUDE.md                    ← You are here (project context).
-├── PROJECT_BRIEF.md             ← One-pager (scope, modules, brief).
-├── package.json                 ← All dependencies.
-├── next.config.mjs              ← PWA + CSP + image config.
-├── tsconfig.json, tailwind.config.ts, postcss.config.mjs, eslint.config.mjs
+├── CLAUDE.md                    ← You are here.
+├── PROJECT_BRIEF.md             ← Scope, modules, full schema.
+├── AGENTS.md                    ← Agent rules (navigation, page status conventions).
+├── package.json
+├── next.config.ts               ← React compiler, image remotes, CSP headers.
+├── tsconfig.json
 ├── vitest.config.ts
-├── .env.local                   ← Secrets (never commit).
-├── .env.example
-├── .gitignore
+├── components.json              ← shadcn/ui config.
+├── postcss.config.mjs, eslint.config.mjs
+├── .env.example, .env.local     ← Secrets (never commit .env.local).
+│
+├── bot/                         ← Telegram bot (local polling mode via index.ts; production uses webhook).
+│   ├── index.ts                 ← Grammy entrypoint (polling, for local dev only).
+│   ├── state.ts                 ← User session state.
+│   └── commands/                ← Shared between polling and webhook modes.
+│       ├── add-transaction.ts
+│       ├── saldo.ts
+│       ├── assets.ts
+│       └── anggaran.ts
+│
+├── public/
+│   └── manifest.webmanifest     ← PWA manifest.
+│
 └── src/
     ├── app/
-    │   ├── globals.css          ← Design tokens (colors, fonts, utilities).
-    │   ├── layout.tsx           ← Root layout (fonts, metadata, PWA).
-    │   ├── manifest.webmanifest ← PWA manifest.
+    │   ├── globals.css          ← Design tokens (colors, fonts).
+    │   ├── layout.tsx           ← Root layout (fonts, metadata, providers).
+    │   ├── page.tsx             ← Redirects to /home.
+    │   │
     │   ├── (auth)/
     │   │   ├── sign-in/page.tsx
     │   │   └── onboarding/page.tsx
-    │   ├── (app)/
-    │   │   ├── layout.tsx       ← App shell (nav + safe-area).
-    │   │   ├── page.tsx         ← Dashboard.
-    │   │   ├── transactions/, bills/, assets/, accounts/, reminders/, scan/, settings/
-    │   │   └── offline/, error.tsx, not-found.tsx
+    │   │
+    │   ├── (app)/               ← Protected app shell (auth check, sidebar + bottom nav).
+    │   │   ├── layout.tsx
+    │   │   ├── home/page.tsx    ← Dashboard.
+    │   │   ├── notifications/page.tsx
+    │   │   ├── finance/
+    │   │   │   ├── dashboard/page.tsx
+    │   │   │   ├── transactions/page.tsx
+    │   │   │   ├── accounts/page.tsx
+    │   │   │   ├── assets/page.tsx
+    │   │   │   ├── aset/page.tsx        ← Grouped accounts + assets view.
+    │   │   │   ├── anggaran/page.tsx    ← Budget view.
+    │   │   │   ├── bills/page.tsx
+    │   │   │   └── reports/page.tsx     ← Skeleton (v1.2).
+    │   │   ├── calendar/
+    │   │   │   ├── page.tsx             ← Skeleton.
+    │   │   │   ├── events/page.tsx      ← Skeleton.
+    │   │   │   └── reminders/page.tsx   ← Skeleton.
+    │   │   ├── other/
+    │   │   │   ├── maintenance/page.tsx ← Skeleton.
+    │   │   │   ├── notes/page.tsx       ← Skeleton.
+    │   │   │   └── vault/page.tsx       ← Skeleton.
+    │   │   └── settings/
+    │   │       ├── page.tsx             ← Settings hub.
+    │   │       ├── members/page.tsx
+    │   │       ├── notifications/page.tsx ← Skeleton.
+    │   │       ├── integrations/page.tsx  ← Skeleton.
+    │   │       ├── audit-log/page.tsx
+    │   │       └── finance-setup/
+    │   │           ├── categories/page.tsx
+    │   │           └── budgets/page.tsx
+    │   │
     │   └── api/
     │       ├── auth/[...nextauth]/route.ts
-    │       ├── sheets/          ← Data API (transactions, bills, accounts, etc.).
-    │       ├── ai/extract/route.ts         ← Gemini vision.
-    │       ├── drive/upload/route.ts
-    │       ├── calendar/(push|delete)/route.ts
-    │       ├── cron/(recurring|reminders|backup)/route.ts
-    │       ├── audit/route.ts, health/route.ts
-    │       └── attachments/[id]/route.ts (P1)
+    │       ├── health/route.ts
+    │       ├── audit/route.ts
+    │       ├── sheets/
+    │       │   ├── transactions/route.ts + [id]/route.ts
+    │       │   ├── accounts/route.ts + [id]/route.ts
+    │       │   ├── assets/route.ts + [id]/route.ts
+    │       │   ├── categories/route.ts + [id]/route.ts
+    │       │   ├── budgets/route.ts + [id]/route.ts
+    │       │   ├── members/me/route.ts
+    │       │   ├── reminders/route.ts + [id]/route.ts
+    │       │   └── init/route.ts        ← Spreadsheet initialization.
+    │       ├── ai/extract/route.ts      ← Gemini vision (skeleton).
+    │       ├── calendar/push/route.ts + delete/route.ts
+    │       └── telegram/
+    │           ├── setup/route.ts
+    │           └── webhook/route.ts
+    │
     ├── components/
-    │   ├── ui/                  ← shadcn/ui primitives (Button, Input, Select, Sheet, etc.).
-    │   ├── finance/             ← Finance domain (MoneyInput, MoneyDisplay, StatusChip, etc.).
-    │   ├── nav/                 ← Bottom nav, app bar.
-    │   ├── layout/              ← SafeArea, AppShell.
-    │   └── sections/            ← EmptyState, LoadingState, ErrorState.
+    │   ├── ui/                  ← shadcn/ui primitives.
+    │   ├── finance/             ← Domain components (see list below).
+    │   ├── nav/                 ← app-sidebar, bottom-nav, add-sheet, add-transaction-dialog, scan-dialog.
+    │   ├── layout/              ← page-container.
+    │   ├── sections/            ← empty-state, error-state, loading-state, page-skeleton.
+    │   ├── settings/            ← finance-category-settings, finance-setup-nav.
+    │   ├── providers.tsx        ← SessionProvider + ThemeProvider + Toaster.
+    │   ├── theme-provider.tsx
+    │   └── theme-toggle.tsx
+    │
     ├── domain/
-    │   ├── types.ts             ← Zod schemas + inferred types.
-    │   ├── transactions.ts, bills.ts, recurring.ts
-    │   ├── permissions.ts       ← canRead(), canWrite() per module.
-    │   ├── currency.ts, constants.ts
-    │   └── ... (pure business logic, no framework deps).
+    │   ├── types.ts             ← All Zod schemas + inferred types.
+    │   ├── transactions.ts      ← groupByDate, sumByType, getMonthRange, computeBalanceDelta.
+    │   ├── categories.ts        ← Category validation, defaults, icon mappings.
+    │   ├── permissions.ts       ← canRead(), canWrite(), canAdmin().
+    │   └── constants.ts         ← Default categories, account types, labels.
+    │
     ├── integrations/
     │   ├── sheets/
-    │   │   ├── client.ts        ← googleapis init.
-    │   │   ├── schema.ts        ← Column letter map.
-    │   │   ├── repository.ts    ← Generic base class.
-    │   │   ├── mappers/         ← Row ↔ object conversion.
-    │   │   └── repositories/    ← Specific entities (TransactionsRepository, etc.).
+    │   │   ├── client.ts        ← googleapis init + auth.
+    │   │   ├── schema.ts        ← Column mappings (A–Z) for all tabs.
+    │   │   ├── repository.ts    ← Base class (findAll, findById, create, update, softDelete).
+    │   │   └── repositories/    ← transactions, accounts, assets, bills, reminders,
+    │   │                           family-members, audit-logs, settings,
+    │   │                           calendar-sync-map, transaction-categories, budgets.
     │   ├── calendar/client.ts
     │   ├── drive/client.ts
-    │   ├── ai/
-    │   │   ├── client.ts        ← Provider-agnostic interface.
-    │   │   ├── providers/gemini.ts, anthropic.ts (future)
-    │   │   ├── prompts/bill-extraction.ts
-    │   │   └── parsers.ts       ← JSON schema validation.
-    │   └── localization/        ← i18n strings (id-ID, en-US).
+    │   └── ai/                  ← (skeleton) client.ts, providers/gemini.ts, prompts/.
+    │
     ├── lib/
-    │   ├── env.ts               ← Zod-validated environment variables.
+    │   ├── env.ts               ← Zod-validated env vars.
     │   ├── auth.ts              ← NextAuth config.
     │   ├── ulid.ts, money.ts, logger.ts, audit.ts
-    │   ├── cache.ts, rate-limit.ts, validators.ts
-    │   └── hooks.ts
+    │   ├── rate-limit.ts        ← In-memory sliding window.
+    │   ├── api-helpers.ts       ← getSessionMember(), ok(), fail().
+    │   └── utils.ts             ← cn() + misc helpers.
+    │
     ├── hooks/
-    │   ├── use-auth.ts, use-permission.ts, use-dashboard.ts
-    │   ├── use-money-input.ts, use-camera.ts, use-offline.ts
-    │   └── ...
-    ├── types/
-    │   ├── index.ts, api.ts
-    │   └── ...
-    └── styles/
-        └── tokens.css
+    │   ├── use-transactions.ts  ← GET + POST/PATCH/DELETE via SWR.
+    │   ├── use-accounts.ts, use-assets.ts, use-budgets.ts
+    │   ├── use-categories.ts, use-favorite-category-ids.ts
+    │   ├── use-reminders.ts
+    │   └── use-mobile.ts        ← Media query (< lg).
+    │
+    └── types/
+        └── next-auth.d.ts       ← Extends Session with custom fields.
 ```
 
 ---
 
-## Google Sheets Schema (16 Tabs)
+## Finance Components (`src/components/finance/`)
+
+| Component                         | Purpose                                  |
+| --------------------------------- | ---------------------------------------- |
+| `money-input.tsx`                 | Number input with IDR formatting         |
+| `money-display.tsx`               | Formatted currency (tabular-nums)        |
+| `status-chip.tsx`                 | Status badges: paid / due-soon / overdue |
+| `transaction-item.tsx`            | Single transaction row                   |
+| `transaction-form.tsx`            | Add/edit transaction form                |
+| `transaction-category-picker.tsx` | Category dropdown                        |
+| `transaction-filter-bar.tsx`      | Filter UI (category / date / account)    |
+| `account-form.tsx`                | Add/edit account form                    |
+| `asset-form.tsx`                  | Add/edit asset form                      |
+| `asset-registry-manager.tsx`      | Grouped asset management                 |
+| `category-form.tsx`               | Category editor                          |
+| `transfer-form.tsx`               | Inter-account transfer                   |
+| `period-picker.tsx`               | Date range selector                      |
+| `month-picker.tsx`                | Month/year selector                      |
+
+---
+
+## Node.js / npm Setup
+
+This machine uses **fnm** (Fast Node Manager). Always resolve the active Node version before
+running any `node`, `npm`, or `npx` commands:
+
+```powershell
+$fnmNode = (Get-ChildItem "C:\Users\adekm\AppData\Local\fnm_multishells" -Directory |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1).FullName
+$env:PATH = "$fnmNode;$env:PATH"
+# then run: npm install / node script.js / npx etc.
+```
+
+---
+
+## Dev Commands
+
+```bash
+# Run Next.js + Telegram bot together (local development, recommended)
+npm run dev
+
+# Next.js only (webhook already set up via /api/telegram/webhook)
+npm run dev:web
+
+# Telegram bot only (polling mode, local only)
+npm run bot
+
+# Build (production, Vercel uses webhook mode)
+npm run build
+
+# Lint
+npm run lint
+```
+
+`npm run dev` uses `concurrently` to run both processes — watch logs labeled `[next]` and `[bot]`. The bot runs in polling mode locally for easier testing and debugging.
+
+---
+
+## Environment Variables (`.env.local`)
+
+```
+NEXTAUTH_SECRET=            # openssl rand -base64 32
+NEXTAUTH_URL=http://localhost:3000
+
+GOOGLE_CLIENT_ID=           # OAuth 2.0 client
+GOOGLE_CLIENT_SECRET=
+
+GOOGLE_SA_EMAIL=            # Service Account email
+GOOGLE_SA_PRIVATE_KEY=      # Service Account private key (PEM)
+
+GOOGLE_SHEETS_ID=           # Created after first sign-in + /api/sheets/init
+GOOGLE_CALENDAR_ID=
+
+GEMINI_API_KEY=             # aistudio.google.com
+
+TELEGRAM_BOT_TOKEN=         # @BotFather
+TELEGRAM_WEBHOOK_SECRET=    # random string for webhook verification
+```
+
+---
+
+## Google Sheets Schema (14 active tabs)
 
 All tabs follow these conventions:
+
 - **Row 1:** Column headers.
 - **Row 2+:** Data.
-- **IDs:** ULIDs with prefixes (`tx_…`, `bill_…`, `mem_…`, etc.).
+- **IDs:** ULIDs with prefixes (`tx_`, `bill_`, `mem_`, etc.).
 - **Dates:** ISO 8601 (`YYYY-MM-DD` or `YYYY-MM-DDTHH:mm:ssZ`).
-- **Money:** Integer minor units (no decimals for IDR, but keep field as int for future non-IDR).
-- **Soft delete:** `deleted_at` column (never hard-delete).
-- **No formulas:** All data is raw (caching + app logic handles derivations).
+- **Money:** Integer minor units (IDR has no decimals; field is int for future multi-currency).
+- **Soft delete:** `deleted_at` column — never hard-delete.
+- **No formulas:** All data is raw; app handles derivations.
 
-### Tabs (brief descriptions)
+| #   | Tab                      | Description                                                   |
+| --- | ------------------------ | ------------------------------------------------------------- |
+| 1   | `family_members`         | Users, roles, module access                                   |
+| 2   | `accounts`               | Bank, cash, e-wallet, loan accounts                           |
+| 3   | `assets`                 | Property, vehicles, gold, electronics                         |
+| 4   | `transactions`           | Income/expense/transfer/adjustment — `amount` always positive |
+| 5   | `transaction_categories` | Categories with icons                                         |
+| 6   | `bills`                  | Recurring bills — `due_date` is next-due                      |
+| 7   | `bill_payments`          | Payment history, links to transactions                        |
+| 8   | `reminders`              | One-time + recurring; synced via `calendar_event_id`          |
+| 9   | `recurring_rules`        | RRULE-like rules; cron clones on `next_run_at`                |
+| 10  | `notes`                  | Emergency contacts, agreements, insurance (skeleton)          |
+| 11  | `settings`               | Key-value config (family name, timezone, integrations)        |
+| 12  | `audit_logs`             | Append-only; every create/update/delete                       |
+| 13  | `calendar_sync_map`      | Local reminder/bill → Google Calendar event ID                |
+| 14  | `budgets`                | Monthly budget per category                                   |
 
-1. **family_members** — Users, roles, module access.
-2. **accounts** — Bank, cash, e-wallet, loan accounts. `current_balance` is derived nightly.
-3. **assets** — Property, vehicles, gold, electronics. Optionally linked to accounts.
-4. **transactions** — Income, expense, transfer, adjustment, refund. `amount` always positive; sign from `type`.
-5. **transaction_categories** — Expense categories (Groceries, Transport, Utilities, etc.) with icons.
-6. **bills** — Recurring bills (electricity, rent, subscriptions). `due_date` is next-due.
-7. **bill_payments** — Payment history for each bill. Links to transactions if auto-created.
-8. **reminders** — One-time + recurring reminders. Synced to Google Calendar via `calendar_event_id`.
-9. **recurring_rules** — RRULE-like rules for bills/reminders/transactions. Cron job clones template on `next_run_at`.
-10. **notes** — Important notes (emergency contacts, insurance, family agreements). P1 in MVP.
-11. **settings** — Key-value config (family name, timezone, integrations).
-12. **audit_logs** — Append-only. Every create/update/delete logs here.
-13. **calendar_sync_map** — Maps local reminders/bills to Google Calendar event IDs.
-14. **ai_extraction_logs** — Track all bill scans (raw response, parsed extraction, confidence, cost).
-15. **attachments** — Normalized attachment table (P1; in MVP, URLs stored inline).
-16. **_system** — Metadata (schema_version, last_backup_at, etc.).
-
-**Full column details:** See PROJECT_BRIEF.md §12.
+Full column details: see PROJECT_BRIEF.md §12.
 
 ---
 
 ## Implementation Roadmap (12 weeks)
 
-| Week | Focus | Checkpoint |
-|------|-------|-------------|
-| 0 | Scaffold + env + auth | `npm install` runs, sign-in works, family created |
-| 1 | Sheets + Onboarding | Spreadsheet created, members invited |
-| 2 | Transactions (vertical slice) | Add expense, view list, edit, audit log visible |
-| 3 | Accounts + Assets | Account transfers, asset grouping |
-| 4 | Bills + Recurring | Bill CRUD, mark paid, cron generator |
-| 5 | Calendar + Reminders | Push events, sync map, notification flow |
-| 6 | **Gemini Bill Extraction** | Camera → Gemini → draft → save (MVP blocker) |
-| 7 | Dashboard | All 5 cards, aggregator API |
-| 8 | PWA + Offline | Manifest, icons, service worker, write queue |
-| 9 | Security + Roles | Module visibility, rate limiting, CSP |
-| 10 | Performance + a11y | Lighthouse ≥80, VoiceOver pass, Indonesian copy |
-| 11 | UAT | Family testing, bug triage, freeze scope |
-| 12 | Launch | Vercel deploy, runbooks, monitoring |
+| Week | Focus                         | Status                                    |
+| ---- | ----------------------------- | ----------------------------------------- |
+| 0    | Scaffold + env + auth         | ✅ Done                                   |
+| 1    | Sheets + Onboarding           | ✅ Done                                   |
+| 2    | Transactions (vertical slice) | ✅ Done                                   |
+| 3    | Accounts + Assets             | ✅ Done                                   |
+| 4    | Bills + Recurring             | ✅ Done                                   |
+| 5    | Calendar + Reminders          | 🚧 APIs done, UI skeleton                 |
+| 6    | **Gemini Bill Extraction**    | 🚧 Endpoint skeleton, UI not built        |
+| 7    | Dashboard                     | ✅ Done                                   |
+| 8    | PWA + Offline                 | ❌ Not started                            |
+| 9    | Security + Roles              | ✅ Logic done; no test coverage yet       |
+| 10   | Performance + a11y            | 🚧 Tailwind in place; no Lighthouse audit |
+| 11   | UAT                           | Upcoming                                  |
+| 12   | Launch                        | Upcoming                                  |
 
 ---
 
 ## Code Guidelines
 
 ### TypeScript
-- Strict mode enabled. No `any` without a comment explaining why.
-- Use Zod for runtime validation at API boundaries.
-- Exported types from `src/domain/types.ts`.
+
+- Strict mode. No `any` without an inline comment explaining why.
+- Zod for runtime validation at every API boundary.
+- All domain types exported from `src/domain/types.ts`.
 
 ### Domain Logic (`src/domain/`)
-- Pure functions, no side effects, no framework imports.
-- No database calls (pass data as arguments).
-- Easy to test with Vitest.
 
-### API Routes (`app/api/**`)
-- Validate with Zod; return `{ ok: true/false, data?, error? }` shape.
-- Call domain logic, then repository.
-- Always audit writes via `writeAudit()`.
-- Check permissions first: `if (!canWrite(member, module)) return 403`.
+- Pure functions, no side effects, no framework or Node imports.
+- Pass data as arguments — no repository calls inside domain.
+- Should be easy to unit-test with Vitest.
+
+### API Routes (`src/app/api/**`)
+
+- Validate request body with Zod.
+- Return `{ ok: true, data }` or `{ ok: false, error }`.
+- Check permissions before any mutation: `if (!canWrite(member, module)) return 403`.
+- Call `writeAudit()` after every successful mutation.
+- Use `getSessionMember()` from `src/lib/api-helpers.ts` for auth.
 
 ### Components (`src/components/`)
+
 - Use shadcn/ui primitives as building blocks.
-- Finance components use Tailwind `tabular-nums` for money.
-- Accessibility: 44×44dp touch targets, ARIA labels, no emoji icons.
+- Finance components use `tabular-nums` class for money alignment.
+- Touch targets ≥ 44×44px. ARIA labels on icon-only buttons.
 
 ### Styling
-- Design tokens in `app/globals.css` (colors, fonts, spacing).
-- Tailwind utilities for layouts.
-- Dark mode via `.dark` class (respects system preference).
-- Status colors: green (paid), amber (due-soon), red (overdue).
+
+- Design tokens in `src/app/globals.css`.
+- Tailwind utilities for layout.
+- Dark mode via `.dark` class (system preference + manual toggle).
+- Status colors: green = paid, amber = due-soon, red = overdue.
 
 ### Testing
-- Unit: `vitest` in `tests/unit/`.
+
+- Unit: `vitest` in `tests/unit/` — **no specs written yet**.
 - Component: React Testing Library.
-- E2E: Playwright in `tests/e2e/`.
-- Pre-commit: `npm lint` + `npm typecheck`.
+- E2E: Playwright in `tests/e2e/` — **not started**.
+- Pre-commit target: `npm run lint`.
 
 ### i18n
+
 - Default locale: `id-ID` (Bahasa Indonesia).
-- Strings in `src/integrations/localization/id-ID.ts`.
-- Format money with `Intl.NumberFormat('id-ID', ...)`.
-
----
-
-## Before You Start Coding
-
-### 1. Install Node.js
-Download LTS from [nodejs.org](https://nodejs.org) or:
-```bash
-winget install OpenJS.NodeJS.LTS
-```
-Then restart your terminal.
-
-### 2. Clone & Install
-```bash
-cd D:\Project\fams
-npm install
-```
-
-### 3. Create `.env.local`
-Copy `.env.example` to `.env.local` and fill in:
-- **NEXTAUTH_SECRET:** `openssl rand -base64 32`
-- **GOOGLE_CLIENT_ID / SECRET:** OAuth 2.0 from Google Cloud Console
-- **GOOGLE_SA_EMAIL / KEY:** Service Account JSON
-- **GEMINI_API_KEY:** From [aistudio.google.com](https://aistudio.google.com)
-- **GOOGLE_SHEETS_ID, GOOGLE_DRIVE_FOLDER_ID, GOOGLE_CALENDAR_ID:** After first sign-in
-
-### 4. Run locally
-```bash
-npm run dev
-# Open http://localhost:3000
-```
-
-### 5. Read before coding
-1. This file (CLAUDE.md) — you're reading it.
-2. **PROJECT_BRIEF.md** — scope, modules, UX notes.
-3. **Schemas in PROJECT_BRIEF.md §12** — understand data model.
+- Format money with `Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' })`.
 
 ---
 
 ## Known Limitations
 
-| Issue | Impact | Mitigation |
-|-------|--------|-----------|
-| Sheets 60 reads/min quota | Performance ceiling | Cache (30s), batch reads, pagination |
-| No transactions in Sheets | Data consistency risk | Audit trail for recovery; domain functions wrap multi-step ops |
-| Sheets queries are slow | List lag | Partition by year; pagination; SWR client-side |
-| Gemini may hallucinate fields | AI confidence < 100% | Always show confidence; user reviews before save |
-| No real-time updates | Stale data risk | Poll with SWR; P1 WebSocket later |
+| Issue                            | Impact                | Mitigation                                             |
+| -------------------------------- | --------------------- | ------------------------------------------------------ |
+| Sheets 60 reads/min quota        | Performance ceiling   | SWR cache (30s TTL), batch reads                       |
+| No atomic transactions in Sheets | Data consistency risk | Audit trail for recovery; domain wraps multi-step ops  |
+| Sheets queries are slow          | List lag              | Paginate; SWR stale-while-revalidate                   |
+| Gemini may hallucinate fields    | AI confidence < 100%  | Show confidence score; user reviews before save        |
+| No real-time updates             | Stale data            | SWR polling; WebSocket is P1 post-MVP                  |
+| No test coverage                 | Regression risk       | Priority: add unit tests for domain + repository layer |
 
 ---
 
 ## Deployment (Vercel)
 
-1. Push code to GitHub `main` branch.
-2. Vercel auto-deploys.
-3. Set environment variables in Vercel dashboard (not `.env` files).
-4. Cron jobs via Vercel's built-in scheduler.
+### Web App
 
-**Cost:** Free tier adequate for MVP. Scale to Pro ($20/month) only if you need advanced analytics or higher cron concurrency.
+1. Push to GitHub `main` branch — Vercel auto-deploys.
+2. Set all env vars in Vercel dashboard (not `.env` files).
+3. Cron jobs via Vercel's built-in scheduler (planned: recurring bills @03:00 UTC, reminders @07:00 UTC).
+
+### Telegram Bot (Webhook Mode)
+
+The bot runs in **webhook mode** on Vercel (not polling), using the route `/api/telegram/webhook`.
+
+**Initial Setup (one-time after deploy):**
+
+1. Deploy the Next.js app to Vercel.
+2. Call `GET /api/telegram/setup` to register the webhook URL with Telegram.
+   ```bash
+   curl https://your-app.vercel.app/api/telegram/setup
+   ```
+3. Verify webhook is active:
+   ```bash
+   curl https://your-app.vercel.app/api/telegram/setup  # GET returns webhook info
+   ```
+
+**Local Development:**
+
+- Run `npm run dev` to start both Next.js and the Telegram bot (polling mode).
+- The bot imports commands from `bot/commands/` for both polling and webhook modes.
+- Changes to commands in `bot/commands/` are reflected in both modes.
+
+**Production vs. Local:**
+
+- **Vercel (production):** Bot runs via webhook at `/api/telegram/webhook` (no separate process).
+- **Local dev:** Bot runs as separate process via `npm run dev` (polling mode for easier testing).
+
+**Cost:** Free tier adequate for MVP.
 
 ---
 
 ## Future Migrations
 
 ### v2.0 — Postgres + Drizzle
-- Migrate Sheets → Neon free tier (0.5GB).
-- Repository pattern makes this mechanical.
-- Keep Sheets as read-only mirror.
 
-### v2.1 — Push Notifications
+- Migrate Sheets → Neon free tier (0.5 GB).
+- Repository pattern makes this mechanical swap.
+
+### v2.1 — Push Notifications + Two-way Calendar Sync
+
 - Web Push for reminders.
-- Two-way Google Calendar sync.
+- Full two-way Google Calendar sync.
 
 ### v2.2 — Multi-currency & Bank Sync
-- Multi-currency support.
+
+- Multi-currency UI (schema already supports it).
 - Open Banking API (P2, risky).
 
 ---
@@ -367,8 +509,9 @@ npm run dev
 ## Questions?
 
 Refer to:
-1. This file (CLAUDE.md).
-2. **PROJECT_BRIEF.md**.
-3. Conversation transcript.
 
-Ask with full context: module, error, what you tried.
+1. This file (CLAUDE.md).
+2. **PROJECT_BRIEF.md** — full scope, module UX notes, column-level schema.
+3. **AGENTS.md** — page status conventions and navigation rules for code generation.
+
+Ask with full context: which module, the error, what you tried.

@@ -12,8 +12,10 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { MoneyInput } from '@/components/finance/money-input'
 import { TransactionCategoryPicker } from '@/components/finance/transaction-category-picker'
+import { CategoryIcon } from '@/components/finance/category-icon'
 import { useAccounts } from '@/hooks/use-accounts'
 import { useCategories } from '@/hooks/use-categories'
+import { ASSET_TYPE_ICONS, ASSET_TYPE_COLORS } from '@/domain/constants'
 import { format } from 'date-fns'
 
 interface TransactionFormProps {
@@ -67,31 +69,9 @@ export function TransactionForm({ defaultValues, onSubmit, onCancel, loading, ca
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      {/* Account */}
+      {/* Row 1: Nominal */}
       <div className="space-y-2">
-        <Label>Akun</Label>
-        <Controller
-          name="account_id"
-          control={control}
-          render={({ field }) => (
-            <Select value={field.value} onValueChange={field.onChange}>
-              <SelectTrigger>
-                <SelectValue placeholder="Pilih akun" />
-              </SelectTrigger>
-              <SelectContent>
-                {accounts.map((acc) => (
-                  <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        />
-        {errors.account_id && <p className="text-xs text-danger">{errors.account_id.message}</p>}
-      </div>
-
-      {/* Amount */}
-      <div className="space-y-2">
-        <Label>Jumlah</Label>
+        <Label>Nominal</Label>
         <Controller
           name="amount"
           control={control}
@@ -102,49 +82,96 @@ export function TransactionForm({ defaultValues, onSubmit, onCancel, loading, ca
         {errors.amount && <p className="text-xs text-danger">{errors.amount.message}</p>}
       </div>
 
-      {/* Description */}
+      {/* Row 2: Deskripsi Singkat */}
       <div className="space-y-2">
-        <Label>Keterangan</Label>
+        <Label>Deskripsi Singkat</Label>
         <Input placeholder="cth. Makan siang" {...register('description')} />
         {errors.description && <p className="text-xs text-danger">{errors.description.message}</p>}
       </div>
 
-      {/* Date */}
-      <div className="space-y-2">
-        <Label>Tanggal</Label>
-        <Input type="date" {...register('date')} />
-        {errors.date && <p className="text-xs text-danger">{errors.date.message}</p>}
+      {/* Row 3: Kategori + Tanggal */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <Label>Kategori</Label>
+          <Controller
+            name="category_id"
+            control={control}
+            render={({ field }) => (
+              <TransactionCategoryPicker
+                categories={categories}
+                value={field.value}
+                onChange={field.onChange}
+                defaultType={selectedType === 'income' || selectedType === 'expense' || selectedType === 'transfer' ? selectedType : 'expense'}
+                label="Buka pilihan kategori"
+                placeholder="Pilih kategori"
+              />
+            )}
+          />
+          {errors.category_id && <p className="text-xs text-danger">{errors.category_id.message}</p>}
+        </div>
+        <div className="space-y-2">
+          <Label>Tanggal</Label>
+          <Input type="date" {...register('date')} />
+          {errors.date && <p className="text-xs text-danger">{errors.date.message}</p>}
+        </div>
       </div>
+      <p className="text-xs text-muted-foreground -mt-2">
+        Jenis transaksi: {CATEGORY_TYPE_LABELS[selectedCategoryType ?? (selectedType === 'income' || selectedType === 'expense' || selectedType === 'transfer' ? selectedType : 'expense')]}
+      </p>
 
-      {/* Category */}
+      {/* Row 4: Akun */}
       <div className="space-y-2">
-        <Label>Kategori</Label>
+        <Label>Akun</Label>
         <Controller
-          name="category_id"
+          name="account_id"
           control={control}
           render={({ field }) => (
-            <TransactionCategoryPicker
-              categories={categories}
-              value={field.value}
-              onChange={field.onChange}
-              defaultType={selectedType === 'income' || selectedType === 'expense' || selectedType === 'transfer' ? selectedType : 'expense'}
-              label="Buka pilihan kategori"
-              placeholder="Pilih kategori"
-            />
+            <Select value={field.value} onValueChange={field.onChange}>
+              <SelectTrigger>
+                {(() => {
+                  const acc = accounts.find((a) => a.id === field.value)
+                  if (!acc) return <span className="text-muted-foreground">Pilih akun</span>
+                  const icon = acc.icon ?? ASSET_TYPE_ICONS[acc.type] ?? 'wallet'
+                  const color = acc.color ?? ASSET_TYPE_COLORS[acc.type] ?? '#64748b'
+                  return (
+                    <div className="flex items-center gap-2">
+                      <span className="flex size-5 shrink-0 items-center justify-center rounded-full text-white" style={{ backgroundColor: color }}>
+                        <CategoryIcon icon={icon} className="size-3" />
+                      </span>
+                      <span>{acc.name}</span>
+                    </div>
+                  )
+                })()}
+              </SelectTrigger>
+              <SelectContent>
+                {accounts.map((acc) => {
+                  const icon = acc.icon ?? ASSET_TYPE_ICONS[acc.type] ?? 'wallet'
+                  const color = acc.color ?? ASSET_TYPE_COLORS[acc.type] ?? '#64748b'
+                  return (
+                    <SelectItem key={acc.id} value={acc.id}>
+                      <div className="flex items-center gap-2">
+                        <span className="flex size-5 shrink-0 items-center justify-center rounded-full text-white" style={{ backgroundColor: color }}>
+                          <CategoryIcon icon={icon} className="size-3" />
+                        </span>
+                        <span>{acc.name}</span>
+                      </div>
+                    </SelectItem>
+                  )
+                })}
+              </SelectContent>
+            </Select>
           )}
         />
-        <p className="text-xs text-muted-foreground">
-          Jenis transaksi: {CATEGORY_TYPE_LABELS[selectedCategoryType ?? (selectedType === 'income' || selectedType === 'expense' || selectedType === 'transfer' ? selectedType : 'expense')]}
-        </p>
-        {errors.category_id && <p className="text-xs text-danger">{errors.category_id.message}</p>}
+        {errors.account_id && <p className="text-xs text-danger">{errors.account_id.message}</p>}
       </div>
 
-      {/* Notes */}
+      {/* Row 5: Catatan */}
       <div className="space-y-2">
         <Label>Catatan (opsional)</Label>
         <Textarea placeholder="Catatan tambahan..." {...register('notes')} rows={2} />
       </div>
 
+      {/* Row 6: Batal + Simpan */}
       <div className="flex gap-2 pt-2">
         <Button type="button" variant="outline" className="flex-1" onClick={onCancel} disabled={loading}>
           {cancelLabel}

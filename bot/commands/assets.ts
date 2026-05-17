@@ -4,21 +4,21 @@ import { formatMoney } from '@/lib/money'
 import type { Asset } from '@/domain/types'
 
 const TYPE_LABELS: Record<string, string> = {
-  property: 'Properti',
-  vehicle: 'Kendaraan',
-  gold: 'Emas',
-  electronics: 'Elektronik',
-  jewelry: 'Perhiasan',
-  other: 'Lainnya',
+  investment: 'Investasi',
+  precious_metal: 'Logam Mulia',
+  stocks: 'Saham',
+  crypto: 'Kripto',
+  real_asset: 'Aset Nyata',
+  business: 'Bisnis',
 }
 
 const TYPE_ICONS: Record<string, string> = {
-  property: '🏠',
-  vehicle: '🚗',
-  gold: '🥇',
-  electronics: '💻',
-  jewelry: '💍',
-  other: '📦',
+  investment: '📈',
+  precious_metal: '🥇',
+  stocks: '📊',
+  crypto: '₿',
+  real_asset: '🏠',
+  business: '💼',
 }
 
 export async function assetsCommand(ctx: Context) {
