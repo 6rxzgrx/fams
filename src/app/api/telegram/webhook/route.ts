@@ -1,10 +1,10 @@
 import { Bot, webhookCallback } from 'grammy'
 import { NextRequest, NextResponse } from 'next/server'
 import { env } from '@/lib/env'
-import { addTransactionCommand, handleTxCallback, handleTxMessage } from '@/bot/commands/add-transaction'
-import { saldoCommand } from '@/bot/commands/saldo'
-import { anggaranCommand } from '@/bot/commands/anggaran'
-import { assetsCommand } from '@/bot/commands/assets'
+import { addTransactionCommand, handleTxCallback, handleTxMessage } from '@bot/commands/add-transaction'
+import { saldoCommand } from '@bot/commands/saldo'
+import { anggaranCommand } from '@bot/commands/anggaran'
+import { assetsCommand } from '@bot/commands/assets'
 
 function buildBot() {
   if (!env.TELEGRAM_BOT_TOKEN) return null
