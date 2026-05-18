@@ -17,7 +17,7 @@ const DialogOverlay = forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      'fixed inset-0 z-50 bg-black/70 backdrop-blur-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+      'fixed inset-0 z-50 bg-black/50 backdrop-blur-[4px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
       className
     )}
     {...props}
@@ -34,9 +34,9 @@ const DialogContent = forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        'fixed bottom-0 left-0 right-0 z-50 w-full rounded-t-xl bg-surface-elevated p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] duration-200',
+        'fixed bottom-0 left-0 right-0 z-50 w-full rounded-t-xl border-t border-border bg-surface-elevated p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-lg duration-200',
         'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom',
-        'sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-w-lg sm:rounded-xl sm:pb-6 sm:-translate-x-1/2 sm:-translate-y-1/2',
+        'sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-w-lg sm:rounded-lg sm:border sm:pb-6 sm:-translate-x-1/2 sm:-translate-y-1/2',
         className
       )}
       {...props}

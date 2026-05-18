@@ -17,39 +17,41 @@ export function AddSheet({ open, onOpenChange, onScan, onManual }: Props) {
       <DialogContent className="sm:max-w-xs gap-0 p-0 overflow-hidden">
         <DialogTitle className="sr-only">Tambah Transaksi</DialogTitle>
 
-        <button
-          type="button"
-          onClick={() => { onOpenChange(false); onScan() }}
-          className={cn(
-            'flex items-center gap-4 px-6 py-5 text-left',
-            'transition-colors hover:bg-muted active:scale-[0.99] border-b border-border',
-          )}
-        >
-          <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-pill bg-accent text-accent-foreground">
-            <Camera className="size-5" strokeWidth={2.25} aria-hidden="true" />
-          </span>
-          <div>
-            <p className="text-sm font-semibold">Pindai Struk</p>
-            <p className="text-[12px] text-muted-foreground">Foto struk, AI isi otomatis</p>
-          </div>
-        </button>
+        <div className="flex flex-col gap-1 p-2">
+          <button
+            type="button"
+            onClick={() => { onOpenChange(false); onScan() }}
+            className={cn(
+              'flex w-full items-center gap-3 rounded-md px-3 py-3 text-left',
+              'bg-accent-soft transition-colors duration-150 hover:bg-accent-soft/80',
+            )}
+          >
+            <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-md bg-accent text-accent-foreground">
+              <Camera className="size-5" strokeWidth={1.75} aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[15px] font-semibold text-foreground">Pindai Struk</p>
+              <p className="text-[12px] text-muted-foreground">Foto struk, AI isi otomatis</p>
+            </div>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => { onOpenChange(false); onManual() }}
-          className={cn(
-            'flex items-center gap-4 px-6 py-5 text-left',
-            'transition-colors hover:bg-muted active:scale-[0.99]',
-          )}
-        >
-          <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-pill bg-muted text-foreground">
-            <PenLine className="size-5" strokeWidth={2.25} aria-hidden="true" />
-          </span>
-          <div>
-            <p className="text-sm font-semibold">Catat Manual</p>
-            <p className="text-[12px] text-muted-foreground">Tambah transaksi langsung</p>
-          </div>
-        </button>
+          <button
+            type="button"
+            onClick={() => { onOpenChange(false); onManual() }}
+            className={cn(
+              'flex w-full items-center gap-3 rounded-md px-3 py-3 text-left',
+              'transition-colors duration-150 hover:bg-muted',
+            )}
+          >
+            <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-md bg-muted text-foreground">
+              <PenLine className="size-5" strokeWidth={1.75} aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[15px] font-semibold text-foreground">Catat Manual</p>
+              <p className="text-[12px] text-muted-foreground">Tambah transaksi langsung</p>
+            </div>
+          </button>
+        </div>
       </DialogContent>
     </Dialog>
   )

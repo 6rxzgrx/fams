@@ -161,6 +161,17 @@ export const ASSET_TYPE_COLORS: Record<string, string> = {
   business: '#8b5cf6',
 }
 
+export const ASSET_TYPE_SATUAN: Record<string, string> = {
+  precious_metal: 'gram',
+  stocks: 'lot',
+  crypto: 'koin',
+  real_asset: 'unit',
+  investment: 'rupiah',
+  business: 'rupiah',
+}
+
+export const SATUAN_OPTIONS = ['gram', 'lot', 'koin', 'unit', 'rupiah'] as const
+
 export const ACCOUNT_ICON_OPTIONS = ['wallet', 'banknote', 'credit-card', 'piggy-bank', 'landmark', 'smartphone', 'coins', 'building-2'] as const
 export const ACCOUNT_COLOR_OPTIONS = ['#059669', '#1e40af', '#7c3aed', '#db2777', '#dc2626', '#ea580c', '#ca8a04', '#0891b2'] as const
 

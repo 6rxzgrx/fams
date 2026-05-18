@@ -12,6 +12,8 @@ import {
   ASSET_TYPE_LABELS,
   ASSET_TYPE_ICONS,
   ASSET_TYPE_COLORS,
+  ASSET_TYPE_SATUAN,
+  SATUAN_OPTIONS,
   CATEGORY_ICON_OPTIONS,
   CATEGORY_COLOR_OPTIONS,
 } from '@/domain/constants'
@@ -39,7 +41,8 @@ const UnifiedSchema = z.object({
   icon: z.string().default('briefcase'),
   color: z.string().default('#64748b'),
   name: z.string().min(1, 'Nama wajib diisi').max(100),
-  balance: z.number().int().nonnegative('Saldo tidak boleh negatif'),
+  balance: z.number().nonnegative('Jumlah tidak boleh negatif'),
+  satuan: z.string().default('rupiah'),
   category: z.string().min(1, 'Pilih tipe aset'),
   include_in_saldo: z.boolean().default(true),
   notes: z.string().max(500).default(''),
@@ -58,7 +61,7 @@ type EditTarget =
   | { kind: 'asset'; item: Partial<Asset> }
 
 function toUnifiedDefaults(edit?: EditTarget): Partial<UnifiedValues> {
-  if (!edit) return { icon: 'briefcase', color: '#64748b', balance: 0, include_in_saldo: true }
+  if (!edit) return { icon: 'briefcase', color: '#64748b', balance: 0, satuan: 'rupiah', include_in_saldo: true }
   if (edit.kind === 'account') {
     const a = edit.item
     return {
@@ -66,6 +69,7 @@ function toUnifiedDefaults(edit?: EditTarget): Partial<UnifiedValues> {
       color: a.color ?? '#1e40af',
       name: a.name ?? '',
       balance: a.current_balance ? parseInt(a.current_balance, 10) : 0,
+      satuan: 'rupiah',
       category: a.type ?? '',
       include_in_saldo: a.include_in_saldo !== 'false',
       notes: a.notes ?? '',
@@ -76,7 +80,8 @@ function toUnifiedDefaults(edit?: EditTarget): Partial<UnifiedValues> {
     icon: a.icon ?? 'briefcase',
     color: a.color ?? '#64748b',
     name: a.name ?? '',
-    balance: a.value ? parseInt(a.value, 10) : 0,
+    balance: a.value ? parseFloat(a.value) : 0,
+    satuan: a.satuan || ASSET_TYPE_SATUAN[a.type ?? ''] || 'rupiah',
     category: a.type ?? '',
     include_in_saldo: a.include_in_saldo === 'true',
     notes: a.notes ?? '',
@@ -122,6 +127,7 @@ export function AssetForm({
       color: defaults.color ?? '#64748b',
       name: defaults.name ?? '',
       balance: defaults.balance ?? 0,
+      satuan: defaults.satuan ?? 'rupiah',
       category: defaults.category ?? '',
       include_in_saldo: defaults.include_in_saldo ?? true,
       notes: defaults.notes ?? '',
@@ -131,7 +137,9 @@ export function AssetForm({
   const selectedColor = watch('color')
   const selectedIcon = watch('icon')
   const selectedCategory = watch('category') as AssetCategory | ''
+  const selectedSatuan = watch('satuan')
   const includeInSaldo = watch('include_in_saldo')
+  const isRupiah = selectedSatuan === 'rupiah'
 
   const categoryLabel = selectedCategory
     ? (ACCOUNT_TYPE_LABELS[selectedCategory] ?? ASSET_TYPE_LABELS[selectedCategory] ?? selectedCategory)
@@ -156,15 +164,17 @@ export function AssetForm({
         },
       })
     } else {
+      const satuan = values.satuan
       await onSubmit({
         kind: 'asset',
         data: {
           name: values.name,
           type: cat as NonLiquidType,
           value: values.balance,
+          satuan,
           icon: values.icon,
           color: values.color,
-          include_in_saldo: values.include_in_saldo,
+          include_in_saldo: satuan === 'rupiah' ? values.include_in_saldo : false,
           notes: values.notes,
           currency: 'IDR',
           account_id: '',
@@ -194,20 +204,55 @@ export function AssetForm({
           </div>
         </div>
 
-        {/* Row 2: saldo awal */}
+        {/* Row 2: jumlah / nilai */}
         <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">Saldo Awal</Label>
-          <Controller
-            name="balance"
-            control={control}
-            render={({ field }) => <MoneyInput value={field.value} onChange={field.onChange} />}
-          />
+          <Label className="text-xs text-muted-foreground">{isRupiah ? 'Nilai Aset' : 'Jumlah'}</Label>
+          {isRupiah ? (
+            <Controller
+              name="balance"
+              control={control}
+              render={({ field }) => <MoneyInput value={field.value} onChange={field.onChange} />}
+            />
+          ) : (
+            <div className="flex gap-2">
+              <Controller
+                name="balance"
+                control={control}
+                render={({ field }) => (
+                  <Input
+                    type="number"
+                    step="any"
+                    min="0"
+                    placeholder="0"
+                    value={field.value || ''}
+                    onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                    className="flex-1"
+                  />
+                )}
+              />
+              <Controller
+                name="satuan"
+                control={control}
+                render={({ field }) => (
+                  <select
+                    value={field.value}
+                    onChange={field.onChange}
+                    className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+                  >
+                    {SATUAN_OPTIONS.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                )}
+              />
+            </div>
+          )}
           {errors.balance && <p className="text-xs text-danger">{errors.balance.message}</p>}
         </div>
 
-        {/* Row 3: tipe aset | include/exclude */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
+        {/* Row 3: tipe aset | include/exclude (only for rupiah) */}
+        <div className={cn('gap-3', isRupiah ? 'grid grid-cols-2' : 'flex')}>
+          <div className="space-y-1.5 flex-1">
             <Label className="text-xs text-muted-foreground">Tipe Aset</Label>
             <button
               type="button"
@@ -237,35 +282,37 @@ export function AssetForm({
             {errors.category && <p className="text-xs text-danger">{errors.category.message}</p>}
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Hitung ke Saldo</Label>
-            <Controller
-              name="include_in_saldo"
-              control={control}
-              render={({ field }) => (
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={field.value}
-                  onClick={() => field.onChange(!field.value)}
-                  className={cn(
-                    'flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-sm transition-colors',
-                    field.value ? 'border-accent bg-accent-soft' : 'border-border bg-muted/30',
-                  )}
-                >
-                  <span className={field.value ? 'text-accent font-medium' : 'text-muted-foreground'}>
-                    {field.value ? 'Termasuk' : 'Dikecualikan'}
-                  </span>
-                  <div className={cn('relative h-5 w-9 rounded-full transition-colors', field.value ? 'bg-accent' : 'bg-muted')}>
-                    <div className={cn(
-                      'absolute top-0.5 size-4 rounded-full bg-white shadow transition-transform',
-                      field.value ? 'translate-x-4' : 'translate-x-0.5',
-                    )} />
-                  </div>
-                </button>
-              )}
-            />
-          </div>
+          {isRupiah && (
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Hitung ke Saldo</Label>
+              <Controller
+                name="include_in_saldo"
+                control={control}
+                render={({ field }) => (
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={field.value}
+                    onClick={() => field.onChange(!field.value)}
+                    className={cn(
+                      'flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-sm transition-colors',
+                      field.value ? 'border-accent bg-accent-soft' : 'border-border bg-muted/30',
+                    )}
+                  >
+                    <span className={field.value ? 'text-accent font-medium' : 'text-muted-foreground'}>
+                      {field.value ? 'Termasuk' : 'Dikecualikan'}
+                    </span>
+                    <div className={cn('relative h-5 w-9 rounded-full transition-colors', field.value ? 'bg-accent' : 'bg-muted')}>
+                      <div className={cn(
+                        'absolute top-0.5 size-4 rounded-full bg-white shadow transition-transform',
+                        field.value ? 'translate-x-4' : 'translate-x-0.5',
+                      )} />
+                    </div>
+                  </button>
+                )}
+              />
+            </div>
+          )}
         </div>
 
         {/* Row 4: catatan */}
@@ -384,6 +431,7 @@ export function AssetForm({
                 setValue('category', cat)
                 setValue('icon', ASSET_TYPE_ICONS[cat] ?? 'briefcase')
                 setValue('color', ASSET_TYPE_COLORS[cat] ?? '#64748b')
+                setValue('satuan', ASSET_TYPE_SATUAN[cat] ?? 'rupiah')
                 setTypePickerOpen(false)
               }}
             />

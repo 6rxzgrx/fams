@@ -38,7 +38,7 @@ export function MoneyInput({ value, onChange, className, placeholder = '0', disa
         onChange={handleChange}
         placeholder={placeholder}
         disabled={disabled}
-        className={cn('pl-9 font-mono tabular-nums', className)}
+        className={cn('pl-9 tabular-nums', className)}
       />
     </div>
   )

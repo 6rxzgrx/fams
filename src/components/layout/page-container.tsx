@@ -16,7 +16,7 @@ export function PageContainer({ children, className, bleed = false }: Props) {
     <div
       className={cn(
         'mx-auto w-full max-w-md lg:max-w-7xl',
-        bleed ? 'lg:px-10 lg:py-10' : 'px-5 py-6 lg:px-10 lg:py-10',
+        bleed ? 'lg:px-10 lg:py-8' : 'px-6 py-4 lg:px-10 lg:py-8',
         className,
       )}
     >

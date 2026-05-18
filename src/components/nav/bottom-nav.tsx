@@ -3,17 +3,17 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, LayoutDashboard, Plus, Bell, Settings } from 'lucide-react'
+import { Home, ArrowLeftRight, Plus, Bell, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AddSheet } from './add-sheet'
 import { ScanDialog } from './scan-dialog'
 import { AddTransactionDialog } from './add-transaction-dialog'
 
 const NAV_ITEMS = [
-  { href: '/home',              label: 'Beranda',    icon: Home,            matchPrefix: false },
-  { href: '/finance/dashboard', label: 'Keuangan',   icon: LayoutDashboard, matchPrefix: true  },
-  { href: '/notifications',     label: 'Notifikasi', icon: Bell,            matchPrefix: false },
-  { href: '/settings',          label: 'Pengaturan', icon: Settings,        matchPrefix: false },
+  { href: '/home',                 label: 'Beranda',    icon: Home,           matchPrefix: false },
+  { href: '/finance/transactions', label: 'Transaksi',  icon: ArrowLeftRight, matchPrefix: true  },
+  { href: '/notifications',        label: 'Notifikasi', icon: Bell,           matchPrefix: false },
+  { href: '/settings',             label: 'Pengaturan', icon: Settings,       matchPrefix: false },
 ] as const
 
 export function BottomNav() {
@@ -34,8 +34,8 @@ export function BottomNav() {
       >
         <div
           className={cn(
-            'pointer-events-auto mx-auto mb-4 flex h-16 max-w-md items-center justify-between',
-            'rounded-pill border border-border-strong bg-surface-elevated/85 px-2',
+            'pointer-events-auto mx-auto mb-4 flex h-[72px] max-w-md items-center justify-between',
+            'rounded-pill border border-border-strong bg-surface-elevated/90 px-2',
             'shadow-md backdrop-blur-xl',
           )}
         >
@@ -49,7 +49,7 @@ export function BottomNav() {
             onClick={() => setAddOpen(true)}
             aria-label="Tambah cepat"
             className={cn(
-              'relative -mt-6 inline-flex size-14 items-center justify-center rounded-pill',
+              'relative -mt-7 inline-flex size-14 items-center justify-center rounded-pill',
               'bg-accent text-accent-foreground shadow-md',
               'transition-transform duration-150 ease-out active:scale-95',
               'ring-4 ring-background',
@@ -91,19 +91,32 @@ function NavItem({
       aria-label={label}
       aria-current={active ? 'page' : undefined}
       className={cn(
-        'group flex size-12 items-center justify-center rounded-pill',
+        'group flex h-14 w-14 flex-col items-center justify-center gap-0.5 rounded-pill',
         'transition-[background-color,color,transform] duration-200 ease-out',
         'active:scale-95',
-        active
-          ? 'bg-accent text-accent-foreground'
-          : 'text-muted-foreground hover:text-foreground',
+        active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
       )}
     >
-      <Icon
-        className="size-5"
-        strokeWidth={active ? 2.5 : 1.75}
-        aria-hidden="true"
-      />
+      <span
+        className={cn(
+          'flex size-9 items-center justify-center rounded-pill transition-colors duration-200',
+          active && 'bg-accent text-accent-foreground',
+        )}
+      >
+        <Icon
+          className="size-5"
+          strokeWidth={active ? 1.75 : 1.5}
+          aria-hidden="true"
+        />
+      </span>
+      <span
+        className={cn(
+          'text-[10px] leading-none',
+          active ? 'font-semibold' : 'font-medium',
+        )}
+      >
+        {label}
+      </span>
     </Link>
   )
 }

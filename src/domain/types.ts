@@ -84,6 +84,7 @@ export const AssetSchema = z.object({
   name: z.string(),
   type: AssetTypeSchema.catch('real_asset'),
   value: z.string().default('0'),
+  satuan: z.string().default('rupiah'),
   currency: z.string().default('IDR'),
   account_id: z.string().optional().default(''),
   include_in_saldo: z.string().optional().default('false'),
@@ -101,7 +102,8 @@ export type Asset = z.infer<typeof AssetSchema>
 export const CreateAssetSchema = z.object({
   name: z.string().min(1, 'Nama aset wajib diisi').max(100),
   type: AssetTypeSchema,
-  value: z.number().int().nonnegative('Nilai tidak boleh negatif'),
+  value: z.number().nonnegative('Nilai tidak boleh negatif'),
+  satuan: z.string().default('rupiah'),
   currency: z.string().default('IDR'),
   account_id: z.string().default(''),
   include_in_saldo: z.boolean().default(false),

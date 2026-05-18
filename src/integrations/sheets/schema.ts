@@ -26,7 +26,7 @@ export type TabName = keyof typeof TABS
 export const COLUMNS: Record<TabName, string[]> = {
   family_members: ['id', 'email', 'name', 'role', 'avatar_url', 'module_access', 'created_at', 'updated_at', 'deleted_at'],
   accounts: ['id', 'name', 'type', 'currency', 'current_balance', 'bank_name', 'account_number', 'color', 'icon', 'notes', 'created_by', 'created_at', 'updated_at', 'deleted_at', 'include_in_saldo'],
-  assets: ['id', 'name', 'type', 'value', 'currency', 'account_id', 'include_in_saldo', 'notes', 'created_by', 'created_at', 'updated_at', 'deleted_at', 'icon', 'color'],
+  assets: ['id', 'name', 'type', 'value', 'satuan', 'currency', 'account_id', 'include_in_saldo', 'notes', 'created_by', 'created_at', 'updated_at', 'deleted_at', 'icon', 'color'],
   transactions: ['id', 'account_id', 'category_id', 'type', 'amount', 'description', 'date', 'reference_no', 'notes', 'created_by', 'created_at', 'updated_at', 'deleted_at'],
   transaction_categories: ['id', 'name', 'type', 'icon', 'color', 'parent_id', 'budget_type', 'is_system', 'created_at', 'updated_at', 'deleted_at'],
   bills: ['id', 'name', 'amount', 'due_date', 'account_id', 'category_id', 'recurrence', 'notes', 'created_by', 'created_at', 'updated_at', 'deleted_at'],

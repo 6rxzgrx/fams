@@ -15,6 +15,7 @@ import { EmptyState } from '@/components/sections/empty-state';
 import { ListSkeleton } from '@/components/sections/loading-state';
 import { ErrorState } from '@/components/sections/error-state';
 import { MoneyDisplay } from '@/components/finance/money-display';
+import { QuantityDisplay } from '@/components/finance/quantity-display';
 import {
 	AssetForm,
 	type UnifiedAssetResult,
@@ -39,6 +40,7 @@ import {
 	ASSET_TYPE_LABELS,
 	ASSET_TYPE_ICONS,
 	ASSET_TYPE_COLORS,
+	ASSET_TYPE_SATUAN,
 	LIQUID_ACCOUNT_TYPES,
 	NON_LIQUID_ASSET_TYPES,
 } from '@/domain/constants';
@@ -109,10 +111,9 @@ export function AssetSetupSettings() {
 		.filter((a) => a.include_in_saldo !== 'false')
 		.reduce((sum, a) => sum + (parseInt(a.current_balance, 10) || 0), 0);
 
-	const nonLiquidTotal = nonLiquidAssets.reduce(
-		(sum, a) => sum + (parseInt(a.value, 10) || 0),
-		0,
-	);
+	const nonLiquidTotal = nonLiquidAssets
+		.filter((a) => (a.satuan || ASSET_TYPE_SATUAN[a.type] || 'rupiah') === 'rupiah')
+		.reduce((sum, a) => sum + (parseFloat(a.value) || 0), 0);
 
 	function mutateAll() {
 		mutateAccounts();
@@ -522,7 +523,10 @@ function NonLiquidTab({
 											{ASSET_TYPE_LABELS[asset.type] ?? asset.type}
 										</p>
 									</div>
-									<MoneyDisplay amount={parseInt(asset.value, 10) || 0} />
+									<QuantityDisplay
+										value={parseFloat(asset.value) || 0}
+										satuan={asset.satuan || ASSET_TYPE_SATUAN[asset.type] || 'rupiah'}
+									/>
 								</button>
 							);
 						})}

@@ -22,7 +22,7 @@ export function StatusChip({ status }: { status: Status }) {
   const { label, variant, Icon } = CONFIG[status]
   return (
     <Badge variant={variant} aria-label={label}>
-      <Icon className="size-3" strokeWidth={2.5} aria-hidden="true" />
+      <Icon className="size-3.5" strokeWidth={1.75} aria-hidden="true" />
       {label}
     </Badge>
   )

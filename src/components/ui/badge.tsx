@@ -3,11 +3,11 @@ import { cn } from '@/lib/utils'
 import type { HTMLAttributes } from 'react'
 
 const badgeVariants = cva(
-  'inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-[12px] font-semibold leading-none',
+  'inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[12px] font-semibold leading-none transition-colors',
   {
     variants: {
       variant: {
-        default:   'bg-accent text-accent-foreground',
+        default:   'bg-muted text-muted-foreground',
         secondary: 'bg-muted text-foreground',
         success:   'bg-success-soft text-success',
         warning:   'bg-warning-soft text-warning',

@@ -20,6 +20,7 @@ import { EmptyState } from '@/components/sections/empty-state';
 import { ErrorState } from '@/components/sections/error-state';
 import { ListSkeleton } from '@/components/sections/loading-state';
 import { MoneyDisplay } from '@/components/finance/money-display';
+import { QuantityDisplay } from '@/components/finance/quantity-display';
 import { TransactionItem } from '@/components/finance/transaction-item';
 import { CategoryIcon } from '@/components/finance/category-icon';
 import {
@@ -232,7 +233,7 @@ function AsetGroupSection({
 										{item.subLabel || item.typeLabel}
 									</p>
 								</div>
-								<MoneyDisplay amount={item.value} />
+								<QuantityDisplay value={item.value} satuan={item.satuan} />
 							</button>
 						))}
 					</div>
@@ -284,8 +285,8 @@ function AsetDetailDialog({
 
 			<div className="grid grid-cols-2 gap-3">
 				<InfoCard
-					label={detail.kind === 'account' ? 'Saldo Saat Ini' : 'Nilai Aset'}
-					value={<MoneyDisplay amount={detail.value} className="text-[22px]" />}
+					label={detail.kind === 'account' ? 'Saldo Saat Ini' : detail.satuan === 'rupiah' ? 'Nilai Aset' : 'Jumlah'}
+					value={<QuantityDisplay value={detail.value} satuan={detail.satuan} className="text-[22px]" />}
 				/>
 				<InfoCard
 					label="Hitung ke Saldo"

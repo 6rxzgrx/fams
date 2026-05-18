@@ -1,4 +1,4 @@
-import { ACCOUNT_TYPE_LABELS, ASSET_TYPE_LABELS, ASSET_TYPE_ICONS, ASSET_TYPE_COLORS, LIQUID_ACCOUNT_TYPES } from '@/domain/constants'
+import { ACCOUNT_TYPE_LABELS, ASSET_TYPE_LABELS, ASSET_TYPE_ICONS, ASSET_TYPE_COLORS, ASSET_TYPE_SATUAN, LIQUID_ACCOUNT_TYPES } from '@/domain/constants'
 import type { Account, Asset } from '@/domain/types'
 
 export interface RegistryItem {
@@ -8,6 +8,7 @@ export interface RegistryItem {
   subLabel?: string
   typeLabel: string
   value: number
+  satuan: string
   includeInSaldo: boolean
   icon: string
   color: string
@@ -26,6 +27,7 @@ export function buildRegistryData(accounts: Account[], assets: Asset[]) {
     subLabel: account.bank_name || undefined,
     typeLabel: ACCOUNT_TYPE_LABELS[account.type] ?? account.type,
     value: parseInt(account.current_balance, 10) || 0,
+    satuan: 'rupiah',
     includeInSaldo: account.include_in_saldo !== 'false',
     icon: account.icon ?? ASSET_TYPE_ICONS[account.type] ?? 'wallet',
     color: account.color ?? ASSET_TYPE_COLORS[account.type] ?? '#1e40af',
@@ -37,7 +39,8 @@ export function buildRegistryData(accounts: Account[], assets: Asset[]) {
     id: asset.id,
     name: asset.name,
     typeLabel: ASSET_TYPE_LABELS[asset.type] ?? asset.type,
-    value: parseInt(asset.value, 10) || 0,
+    value: parseFloat(asset.value) || 0,
+    satuan: asset.satuan || ASSET_TYPE_SATUAN[asset.type] || 'rupiah',
     includeInSaldo: asset.include_in_saldo === 'true',
     icon: asset.icon ?? ASSET_TYPE_ICONS[asset.type] ?? 'briefcase',
     color: asset.color ?? ASSET_TYPE_COLORS[asset.type] ?? '#64748b',
@@ -58,7 +61,10 @@ export function buildRegistryData(accounts: Account[], assets: Asset[]) {
   const totalSaldo = combined
     .filter((item) => item.includeInSaldo)
     .reduce((sum, item) => sum + item.value, 0)
-  const totalNilai = combined.reduce((sum, item) => sum + item.value, 0)
+  const totalNilai = [
+    ...liquidItems,
+    ...nonLiquidItems.filter((item) => item.satuan === 'rupiah'),
+  ].reduce((sum, item) => sum + item.value, 0)
 
   return {
     liquidItems,
