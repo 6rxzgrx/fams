@@ -3,17 +3,17 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, ArrowLeftRight, Plus, Bell, Settings } from 'lucide-react'
+import { Home, Wallet, Plus, Bell, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AddSheet } from './add-sheet'
 import { ScanDialog } from './scan-dialog'
 import { AddTransactionDialog } from './add-transaction-dialog'
 
 const NAV_ITEMS = [
-  { href: '/home',                 label: 'Beranda',    icon: Home,           matchPrefix: false },
-  { href: '/finance/transactions', label: 'Transaksi',  icon: ArrowLeftRight, matchPrefix: true  },
-  { href: '/notifications',        label: 'Notifikasi', icon: Bell,           matchPrefix: false },
-  { href: '/settings',             label: 'Pengaturan', icon: Settings,       matchPrefix: false },
+  { href: '/home',               label: 'Beranda',    icon: Home,    matchPrefix: false },
+  { href: '/finance/dashboard',  label: 'Keuangan',   icon: Wallet,  matchPrefix: true  },
+  { href: '/notifications',      label: 'Notifikasi', icon: Bell,    matchPrefix: false },
+  { href: '/settings',           label: 'Pengaturan', icon: Settings, matchPrefix: false },
 ] as const
 
 export function BottomNav() {

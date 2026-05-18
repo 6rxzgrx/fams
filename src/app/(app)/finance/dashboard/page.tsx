@@ -244,25 +244,30 @@ export default function RingkasanPage() {
         </div>
       </header>
 
-      {/* ─── Hero: money left (3/4) + total kekayaan (1/4) ────── */}
-      <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-[3fr_1fr] lg:gap-5">
-        <MoneyLeftCard
-          totalLiquid={totalLiquid}
-          accounts={liquidAccounts}
-          totalBudget={totalBudget}
-          totalBudgetSpent={totalBudgetSpent}
-          incomeMonth={monthSums.income}
-          expenseMonth={monthSums.expense}
-          monthLabel={fullMonthLabel(month)}
-          loading={accountsLoading}
-        />
-        <TotalKekayaanCard
-          netWorth={netWorth}
-          totalLiquid={totalLiquid}
-          totalAssetValue={totalAssetValue}
-          netMonth={netMonth}
-          loading={accountsLoading || assetsLoading}
-        />
+      {/* ─── Hero: money left + total kekayaan ────── */}
+      {/* Mobile: horizontal snap scroll; Desktop: 3fr/1fr grid */}
+      <div className="flex snap-x snap-mandatory overflow-x-auto gap-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:grid lg:grid-cols-[3fr_1fr] lg:overflow-visible lg:items-stretch">
+        <div className="w-[calc(100%-2rem)] shrink-0 snap-start lg:w-auto">
+          <MoneyLeftCard
+            totalLiquid={totalLiquid}
+            accounts={liquidAccounts}
+            totalBudget={totalBudget}
+            totalBudgetSpent={totalBudgetSpent}
+            incomeMonth={monthSums.income}
+            expenseMonth={monthSums.expense}
+            monthLabel={fullMonthLabel(month)}
+            loading={accountsLoading}
+          />
+        </div>
+        <div className="w-[calc(100%-2rem)] shrink-0 snap-start lg:w-auto">
+          <TotalKekayaanCard
+            netWorth={netWorth}
+            totalLiquid={totalLiquid}
+            totalAssetValue={totalAssetValue}
+            netMonth={netMonth}
+            loading={accountsLoading || assetsLoading}
+          />
+        </div>
       </div>
 
       {/* ─── Sub-pages grid (web) / scroller (mobile) ─────────── */}
@@ -553,7 +558,7 @@ function TotalKekayaanCard({
       <div className="relative mt-4 space-y-2.5 border-t border-border pt-4">
         {[
           { label: 'Likuid', value: totalLiquid, dotCls: 'bg-accent' },
-          { label: 'Aset', value: totalAssetValue, dotCls: 'bg-info' },
+          { label: 'Non Likuid', value: totalAssetValue, dotCls: 'bg-info' },
         ].map(({ label, value, dotCls }) => (
           <div key={label} className="flex items-center gap-2.5">
             <span className={cn('size-2 shrink-0 rounded-[3px]', dotCls)} />
@@ -612,18 +617,10 @@ function SubPagesNav({
       Icon: List,
     },
     {
-      href: '/finance/accounts',
-      label: 'Akun',
-      sub: `${accountsCount} akun aktif`,
-      stat: formatMoneyCompact(liquid),
-      tone: 'info',
-      Icon: Wallet,
-    },
-    {
       href: '/finance/aset',
       label: 'Aset',
-      sub: `${assetsCount} item`,
-      stat: formatMoneyCompact(assets),
+      sub: `${accountsCount} likuid · ${assetsCount} non-likuid`,
+      stat: formatMoneyCompact(liquid + assets),
       tone: 'accent',
       Icon: Coins,
     },
@@ -648,7 +645,7 @@ function SubPagesNav({
   return (
     <section aria-label="Menu Keuangan">
       <p className="text-eyebrow mb-2 px-1 text-muted-foreground lg:hidden">Menu Keuangan</p>
-      <div className="grid grid-cols-3 gap-2.5 lg:grid-cols-5 lg:gap-3">
+      <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4 lg:gap-3">
         {items.map((p) => (
           <Link
             key={p.href}
