@@ -29,6 +29,12 @@ import {
 } from '@/components/finance/asset-registry-shared';
 import { MobileBackButton } from '@/components/nav/mobile-back-button';
 import { PageContainer } from '@/components/layout/page-container';
+import { MonthPicker } from '@/components/finance/month-picker';
+
+function currentYM() {
+	const now = new Date();
+	return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
 import { useAccounts } from '@/hooks/use-accounts';
 import { useAssets } from '@/hooks/use-assets';
 import { useCategories } from '@/hooks/use-categories';
@@ -54,6 +60,7 @@ export default function AsetPage() {
 
 	const isLoading = accLoading || assetLoading;
 	const error = accError || assetError;
+	const [month, setMonth] = useState(currentYM);
 	const { liquidGroups, nonLiquidGroups, totalSaldo, totalNilai, hasItems } =
 		buildRegistryData(accounts, assets);
 
@@ -64,21 +71,23 @@ export default function AsetPage() {
 
 	return (
 		<PageContainer bleed>
-			<header className="space-y-4 px-5 py-4 lg:px-0 lg:py-0 lg:pb-8">
-				<div className="flex items-start justify-between gap-3">
-					<div>
-						<MobileBackButton />
-						<h1 className="text-[22px] font-semibold leading-tight tracking-tight lg:text-[28px]">
-							Aset
-						</h1>
-						<p className="hidden text-[13px] text-muted-foreground lg:block">
-							Daftar aset likuid dan non-likuid keluarga.
-						</p>
-					</div>
+			<header className="flex items-end justify-between gap-3 px-5 py-4 lg:px-0 lg:py-0 lg:pb-6">
+				<div className="min-w-0">
+					<MobileBackButton />
+					<h1 className="truncate text-[22px] font-semibold leading-tight tracking-tight lg:text-[28px]">
+						Aset Keluarga
+					</h1>
+					<p className="mt-0.5 hidden text-[13px] text-muted-foreground lg:block">
+						Assets are not just numbers on a spreadsheet — they are one step
+						towards financial freedom.
+					</p>
+				</div>
+				<div className="flex shrink-0 items-center gap-2">
+					<MonthPicker value={month} onChange={setMonth} />
 					<Button
 						asChild
-						variant="outline"
-						className="shrink-0 rounded-pill lg:rounded-md"
+						type="button"
+						className="hidden h-10 items-center gap-2 rounded-md bg-accent px-4 text-[13px] font-semibold text-accent-foreground transition-opacity hover:opacity-90 lg:inline-flex"
 					>
 						<Link href="/settings/finance-setup/assets">
 							Kelola Aset
@@ -285,8 +294,20 @@ function AsetDetailDialog({
 
 			<div className="grid grid-cols-2 gap-3">
 				<InfoCard
-					label={detail.kind === 'account' ? 'Saldo Saat Ini' : detail.satuan === 'rupiah' ? 'Nilai Aset' : 'Jumlah'}
-					value={<QuantityDisplay value={detail.value} satuan={detail.satuan} className="text-[22px]" />}
+					label={
+						detail.kind === 'account'
+							? 'Saldo Saat Ini'
+							: detail.satuan === 'rupiah'
+								? 'Nilai Aset'
+								: 'Jumlah'
+					}
+					value={
+						<QuantityDisplay
+							value={detail.value}
+							satuan={detail.satuan}
+							className="text-[22px]"
+						/>
+					}
 				/>
 				<InfoCard
 					label="Hitung ke Saldo"

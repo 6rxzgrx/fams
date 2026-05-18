@@ -1,7 +1,5 @@
 'use client'
 
-import { format } from 'date-fns'
-import { id } from 'date-fns/locale'
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -11,7 +9,7 @@ import {
   MoreVertical,
   type LucideIcon,
 } from 'lucide-react'
-import type { Transaction, TransactionCategory } from '@/domain/types'
+import type { Transaction, TransactionCategory, Account } from '@/domain/types'
 import { formatCategoryLabel } from '@/domain/categories'
 import { MoneyDisplay } from './money-display'
 import { TX_TYPE_LABELS } from '@/domain/transactions'
@@ -20,6 +18,7 @@ import { cn } from '@/lib/utils'
 interface TransactionItemProps {
   transaction: Transaction
   categories: TransactionCategory[]
+  accounts?: Account[]
   onClick?: () => void
   onMenu?: () => void
   selected?: boolean
@@ -33,16 +32,25 @@ const TYPE_META: Record<string, { Icon: LucideIcon; tone: string }> = {
   adjustment: { Icon: Equal,          tone: 'bg-warning-soft text-warning' },
 }
 
-export function TransactionItem({ transaction, categories, onClick, onMenu, selected }: TransactionItemProps) {
+export function TransactionItem({ transaction, categories, accounts, onClick, onMenu, selected }: TransactionItemProps) {
   const category = categories.find((c) => c.id === transaction.category_id)
+  const account = accounts?.find((a) => a.id === transaction.account_id)
   const meta = TYPE_META[transaction.type] ?? { Icon: Equal, tone: 'bg-muted text-muted-foreground' }
-  const { Icon, tone } = meta
+  const { Icon } = meta
+
+  const catColor = category?.color
+  const iconBg = catColor ? `${catColor}1f` : undefined
+  const iconColor = catColor || undefined
+
+  const txTime = transaction.created_at
+    ? new Date(transaction.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+    : null
 
   return (
     <div
       className={cn(
-        'group flex items-center gap-3 rounded-md px-3 transition-colors duration-150',
-        'hover:bg-muted',
+        'group flex items-center gap-3 px-4 transition-colors duration-150',
+        'hover:bg-muted/40',
         selected && 'bg-accent-soft',
       )}
     >
@@ -52,24 +60,36 @@ export function TransactionItem({ transaction, categories, onClick, onMenu, sele
         className="flex flex-1 items-center gap-3 py-3 text-left focus-visible:outline-none"
       >
         <span
-          className={cn('inline-flex size-10 shrink-0 items-center justify-center rounded-md', tone)}
+          className={cn(
+            'inline-flex size-[38px] shrink-0 items-center justify-center rounded-[12px]',
+            !catColor && meta.tone,
+          )}
+          style={catColor ? { backgroundColor: iconBg } : undefined}
           aria-hidden="true"
         >
-          <Icon className="size-[18px]" strokeWidth={1.75} />
+          <Icon
+            className="size-[17px]"
+            strokeWidth={1.75}
+            style={iconColor ? { color: iconColor } : undefined}
+          />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[15px] font-semibold text-foreground">{transaction.description}</p>
-          <p className="text-[12px] text-muted-foreground">
+          <p className="truncate text-[13.5px] font-semibold text-foreground">{transaction.description}</p>
+          <p className="mt-0.5 text-[11px] font-medium text-muted-foreground">
             {category ? formatCategoryLabel(category, categories) : TX_TYPE_LABELS[transaction.type]}
-            {' · '}
-            {format(new Date(transaction.date), 'd MMMM yyyy', { locale: id })}
+            {account && <>{' · '}{account.name}</>}
           </p>
         </div>
-        <MoneyDisplay
-          amount={parseInt(transaction.amount, 10)}
-          type={transaction.type}
-          className="shrink-0 text-[15px]"
-        />
+        <div className="shrink-0 text-right">
+          <MoneyDisplay
+            amount={parseInt(transaction.amount, 10)}
+            type={transaction.type}
+            className="text-[14px] font-bold"
+          />
+          {txTime && (
+            <p className="mt-0.5 text-[10.5px] font-medium text-muted-foreground tabular-nums">{txTime}</p>
+          )}
+        </div>
       </button>
       {onMenu && (
         <button

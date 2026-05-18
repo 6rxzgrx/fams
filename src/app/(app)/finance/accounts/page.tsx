@@ -23,6 +23,13 @@ import {
 import { ACCOUNT_TYPE_LABELS } from '@/domain/constants'
 import type { Account, CreateAccountInput, CreateTransferInput } from '@/domain/types'
 import { PageContainer } from '@/components/layout/page-container'
+import { MobileBackButton } from '@/components/nav/mobile-back-button'
+import { MonthPicker } from '@/components/finance/month-picker'
+
+function currentYM() {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+}
 
 export default function AccountsPage() {
   const { accounts, isLoading, error, mutate } = useAccounts()
@@ -31,6 +38,7 @@ export default function AccountsPage() {
   const { trigger: deleteAcc, isMutating: deleting } = useDeleteAccount()
   const { trigger: transfer, isMutating: transferring } = useCreateTransfer()
 
+  const [month, setMonth] = useState(currentYM)
   const [addOpen, setAddOpen] = useState(false)
   const [editAcc, setEditAcc] = useState<Account | null>(null)
   const [transferOpen, setTransferOpen] = useState(false)
@@ -79,44 +87,34 @@ export default function AccountsPage() {
 
   return (
     <PageContainer bleed>
-      {/* Header */}
-      <header className="sticky top-0 z-10 bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70 lg:static lg:bg-transparent lg:backdrop-blur-none">
-        <div className="flex items-center justify-between px-5 py-4 lg:px-0 lg:py-0 lg:pb-8">
-          <div>
-            <h1 className="text-[22px] font-semibold leading-tight tracking-tight lg:text-[28px]">Akun</h1>
-            <p className="hidden text-[13px] text-muted-foreground lg:block">
-              Bank, kas, dompet digital, dan pinjaman keluarga.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              size="icon"
-              variant="outline"
-              onClick={() => setTransferOpen(true)}
-              aria-label="Transfer antar akun"
-              disabled={accounts.length < 2}
-              className="rounded-pill lg:rounded-md"
-            >
-              <ArrowLeftRight className="size-5 lg:size-4" strokeWidth={2.25} aria-hidden="true" />
-            </Button>
-            <Button
-              variant="accent"
-              size="icon"
-              onClick={() => setAddOpen(true)}
-              aria-label="Tambah akun"
-              className="rounded-pill lg:hidden"
-            >
-              <Plus className="size-5" strokeWidth={2.5} aria-hidden="true" />
-            </Button>
-            <Button
-              variant="accent"
-              onClick={() => setAddOpen(true)}
-              className="hidden lg:inline-flex"
-            >
-              <Plus className="size-4" strokeWidth={2.5} aria-hidden="true" />
-              Tambah Akun
-            </Button>
-          </div>
+      <header className="flex items-end justify-between gap-3 px-5 py-4 lg:px-0 lg:py-0 lg:pb-6">
+        <div className="min-w-0">
+          <MobileBackButton />
+          <h1 className="truncate text-[22px] font-semibold leading-tight tracking-tight lg:text-[28px]">Akun</h1>
+          <p className="mt-0.5 hidden text-[13px] text-muted-foreground lg:block">
+            Bank, kas, dompet digital, dan pinjaman keluarga.
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <MonthPicker value={month} onChange={setMonth} />
+          <Button
+            size="icon"
+            variant="outline"
+            onClick={() => setTransferOpen(true)}
+            aria-label="Transfer antar akun"
+            disabled={accounts.length < 2}
+            className="hidden lg:inline-flex"
+          >
+            <ArrowLeftRight className="size-4" strokeWidth={2.25} aria-hidden="true" />
+          </Button>
+          <Button
+            variant="accent"
+            onClick={() => setAddOpen(true)}
+            className="hidden lg:inline-flex"
+          >
+            <Plus className="size-4" strokeWidth={2.5} aria-hidden="true" />
+            Tambah Akun
+          </Button>
         </div>
       </header>
 

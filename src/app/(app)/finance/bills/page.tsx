@@ -1,33 +1,35 @@
 'use client'
 
+import { useState } from 'react'
 import { Plus, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/sections/empty-state'
 import { PageContainer } from '@/components/layout/page-container'
+import { MonthPicker } from '@/components/finance/month-picker'
 import { MobileBackButton } from '@/components/nav/mobile-back-button'
 
+function currentYM() {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+}
+
 export default function BillsPage() {
+  const [month, setMonth] = useState(currentYM)
+
   return (
     <PageContainer bleed>
-      {/* Header */}
-      <header className="sticky top-0 z-10 bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70 lg:static lg:bg-transparent lg:backdrop-blur-none">
-        <div className="flex items-center justify-between px-5 py-4 lg:px-0 lg:py-0 lg:pb-8">
-          <div>
-            <MobileBackButton />
-            <h1 className="text-[22px] font-semibold leading-tight tracking-tight lg:text-[28px]">Tagihan</h1>
-            <p className="hidden text-[13px] text-muted-foreground lg:block">
-              Listrik, sewa, langganan, dan tagihan rutin keluarga.
-            </p>
-          </div>
-          <Button
-            variant="accent"
-            size="icon"
-            aria-label="Tambah tagihan"
-            disabled
-            className="rounded-pill lg:hidden"
-          >
-            <Plus className="size-5" strokeWidth={2.5} aria-hidden="true" />
-          </Button>
+      <header className="flex items-end justify-between gap-3 px-5 py-4 lg:px-0 lg:py-0 lg:pb-6">
+        <div className="min-w-0">
+          <MobileBackButton />
+          <h1 className="truncate text-[22px] font-semibold leading-tight tracking-tight lg:text-[28px]">
+            Tagihan
+          </h1>
+          <p className="mt-0.5 hidden text-[13px] text-muted-foreground lg:block">
+            Listrik, sewa, langganan, dan tagihan rutin keluarga.
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <MonthPicker value={month} onChange={setMonth} />
           <Button variant="accent" disabled className="hidden lg:inline-flex">
             <Plus className="size-4" strokeWidth={2.5} aria-hidden="true" />
             Tambah Tagihan
@@ -35,7 +37,6 @@ export default function BillsPage() {
         </div>
       </header>
 
-      {/* Content */}
       <EmptyState
         icon={FileText}
         title="Tagihan (Week 4)"
