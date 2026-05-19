@@ -3,16 +3,21 @@
 import useSWR from 'swr'
 import useSWRMutation from 'swr/mutation'
 import type {
-  Account,
+  Asset,
   ApiResponse,
-  CreateAccountInput,
-  UpdateAccountInput,
+  CreateAssetInput,
+  UpdateAssetInput,
   CreateTransferInput,
 } from '@/domain/types'
 
+// Backward-compat aliases so existing callers don't need to change
+export type Account = Asset
+export type CreateAccountInput = CreateAssetInput
+export type UpdateAccountInput = UpdateAssetInput
+
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
-async function postFetcher(url: string, { arg }: { arg: CreateAccountInput }) {
+async function postFetcher(url: string, { arg }: { arg: CreateAssetInput }) {
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -21,7 +26,7 @@ async function postFetcher(url: string, { arg }: { arg: CreateAccountInput }) {
   return res.json()
 }
 
-async function patchFetcher(url: string, { arg }: { arg: { id: string; data: UpdateAccountInput } }) {
+async function patchFetcher(url: string, { arg }: { arg: { id: string; data: UpdateAssetInput } }) {
   const res = await fetch(`${url}/${arg.id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
@@ -45,7 +50,7 @@ async function transferFetcher(url: string, { arg }: { arg: CreateTransferInput 
 }
 
 export function useAccounts() {
-  const { data, error, isLoading, mutate } = useSWR<ApiResponse<Account[]>>('/api/sheets/accounts', fetcher)
+  const { data, error, isLoading, mutate } = useSWR<ApiResponse<Asset[]>>('/api/sheets/accounts', fetcher)
   return {
     accounts: data?.ok ? data.data : [],
     isLoading,

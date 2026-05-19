@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Tags, Briefcase } from 'lucide-react'
+import { Tags, Briefcase, RefreshCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const ITEMS = [
@@ -17,6 +17,12 @@ const ITEMS = [
     label: 'Asset',
     description: 'Akun dan aset fisik keluarga',
     icon: Briefcase,
+  },
+  {
+    href: '/settings/finance-setup/converter',
+    label: 'Converter',
+    description: 'Harga emas, kurs, dan aset lainnya',
+    icon: RefreshCw,
   },
 ] as const
 

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
-import { accountsRepo } from '@/integrations/sheets/repositories/accounts'
+import { assetsRepo } from '@/integrations/sheets/repositories/assets'
 import { transactionsRepo } from '@/integrations/sheets/repositories/transactions'
-import { UpdateAccountSchema, ok, fail } from '@/domain/types'
+import { UpdateAssetSchema, ok, fail } from '@/domain/types'
 import { canWrite } from '@/domain/permissions'
 import { writeAudit } from '@/lib/audit'
 import { getSessionMember } from '@/lib/api-helpers'
@@ -18,13 +18,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   try {
     const body = await req.json()
-    const parsed = UpdateAccountSchema.safeParse(body)
+    const parsed = UpdateAssetSchema.safeParse(body)
     if (!parsed.success) {
       return NextResponse.json(fail(parsed.error.issues[0].message), { status: 400 })
     }
 
-    const existing = await accountsRepo.findById(id)
-    if (!existing) {
+    const existing = await assetsRepo.findById(id)
+    if (!existing || existing.kind !== 'liquid') {
       return NextResponse.json(fail('Akun tidak ditemukan'), { status: 404 })
     }
 
@@ -40,7 +40,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (parsed.data.notes !== undefined) patch.notes = parsed.data.notes
     if (parsed.data.include_in_saldo !== undefined) patch.include_in_saldo = parsed.data.include_in_saldo ? 'true' : 'false'
 
-    const updated = await accountsRepo.update(id, patch)
+    const updated = await assetsRepo.update(id, patch)
 
     await writeAudit({
       memberId: member.id,
@@ -70,12 +70,11 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   const { id } = await params
 
   try {
-    const existing = await accountsRepo.findById(id)
-    if (!existing) {
+    const existing = await assetsRepo.findById(id)
+    if (!existing || existing.kind !== 'liquid') {
       return NextResponse.json(fail('Akun tidak ditemukan'), { status: 404 })
     }
 
-    // Refuse delete if account still has non-deleted transactions
     const linked = await transactionsRepo.findByField('account_id', id)
     if (linked.length > 0) {
       return NextResponse.json(
@@ -84,7 +83,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
       )
     }
 
-    await accountsRepo.softDelete(id)
+    await assetsRepo.softDelete(id)
 
     await writeAudit({
       memberId: member.id,

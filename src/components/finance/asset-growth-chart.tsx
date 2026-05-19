@@ -1,5 +1,6 @@
 'use client';
 
+import { useSyncExternalStore } from 'react';
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 
 import {
@@ -52,7 +53,9 @@ export function AssetGrowthChart({
 	height = 260,
 	className,
 }: Props) {
-	if (snapshots.length < 1) {
+	const isClient = useSyncExternalStore(() => () => {}, () => true, () => false);
+
+	if (!isClient || snapshots.length < 1) {
 		return <div className={className} style={{ height }} aria-hidden="true" />;
 	}
 

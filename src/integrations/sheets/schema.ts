@@ -3,7 +3,6 @@
 
 export const TABS = {
   family_members: 'family_members',
-  accounts: 'accounts',
   assets: 'assets',
   transactions: 'transactions',
   transaction_categories: 'transaction_categories',
@@ -20,14 +19,14 @@ export const TABS = {
   attachments: 'attachments',
   _system: '_system',
   asset_snapshots: 'asset_snapshots',
+  price_rates: 'price_rates',
 } as const
 
 export type TabName = keyof typeof TABS
 
 export const COLUMNS: Record<TabName, string[]> = {
   family_members: ['id', 'email', 'name', 'role', 'avatar_url', 'module_access', 'created_at', 'updated_at', 'deleted_at'],
-  accounts: ['id', 'name', 'type', 'currency', 'current_balance', 'bank_name', 'account_number', 'color', 'icon', 'notes', 'created_by', 'created_at', 'updated_at', 'deleted_at', 'include_in_saldo'],
-  assets: ['id', 'name', 'type', 'value', 'satuan', 'currency', 'account_id', 'include_in_saldo', 'notes', 'created_by', 'created_at', 'updated_at', 'deleted_at', 'icon', 'color'],
+  assets: ['id', 'kind', 'name', 'type', 'currency', 'current_balance', 'satuan', 'price_symbol', 'bank_name', 'account_number', 'color', 'icon', 'notes', 'include_in_saldo', 'created_by', 'created_at', 'updated_at', 'deleted_at'],
   transactions: ['id', 'account_id', 'category_id', 'type', 'amount', 'description', 'date', 'reference_no', 'notes', 'created_by', 'created_at', 'updated_at', 'deleted_at'],
   transaction_categories: ['id', 'name', 'type', 'icon', 'color', 'parent_id', 'budget_type', 'is_system', 'created_at', 'updated_at', 'deleted_at'],
   bills: ['id', 'name', 'amount', 'due_date', 'account_id', 'category_id', 'recurrence', 'notes', 'created_by', 'created_at', 'updated_at', 'deleted_at'],
@@ -43,6 +42,7 @@ export const COLUMNS: Record<TabName, string[]> = {
   attachments: ['id', 'entity_type', 'entity_id', 'filename', 'mime_type', 'drive_file_id', 'url', 'created_by', 'created_at'],
   _system: ['key', 'value'],
   asset_snapshots: ['id', 'month', 'liquid_total', 'non_liquid_total', 'snapshot_at'],
+  price_rates: ['id', 'symbol', 'label', 'source', 'value_idr_per_unit', 'unit', 'raw_api_data', 'updated_at'],
 }
 
 export function columnToLetter(col: number): string {

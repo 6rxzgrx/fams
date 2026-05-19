@@ -111,16 +111,12 @@ export const CATEGORY_COLOR_OPTIONS = [
   '#fb7185',
 ] as const
 
-export const ACCOUNT_TYPE_LABELS: Record<string, string> = {
+export const ASSET_TYPE_LABELS: Record<string, string> = {
   cash: 'Tunai',
   bank: 'Bank',
   ewallet: 'Dompet Digital',
   loan: 'Pinjaman',
-  investment: 'Investasi',
   prepaid_card: 'Kartu Prabayar',
-}
-
-export const ASSET_TYPE_LABELS: Record<string, string> = {
   investment: 'Investasi',
   precious_metal: 'Logam Mulia',
   stocks: 'Saham',
@@ -129,10 +125,16 @@ export const ASSET_TYPE_LABELS: Record<string, string> = {
   business: 'Bisnis',
 }
 
-// Liquid account types shown in the Aset > Likuid tab
-export const LIQUID_ACCOUNT_TYPES = ['bank', 'ewallet', 'prepaid_card', 'cash'] as const
+// Backward-compat alias
+export const ACCOUNT_TYPE_LABELS = ASSET_TYPE_LABELS
 
-// Non-liquid asset types shown in the Aset > Non-Likuid tab
+// Liquid asset types (kind='liquid') — can be used for transactions
+export const LIQUID_ASSET_TYPES = ['cash', 'bank', 'ewallet', 'loan', 'prepaid_card'] as const
+
+// Backward-compat alias
+export const LIQUID_ACCOUNT_TYPES = LIQUID_ASSET_TYPES
+
+// Non-liquid asset types (kind='non_liquid')
 export const NON_LIQUID_ASSET_TYPES = ['investment', 'precious_metal', 'stocks', 'crypto', 'real_asset', 'business'] as const
 
 export const ASSET_TYPE_ICONS: Record<string, string> = {
@@ -174,6 +176,15 @@ export const SATUAN_OPTIONS = ['gram', 'lot', 'koin', 'unit', 'rupiah'] as const
 
 export const ACCOUNT_ICON_OPTIONS = ['wallet', 'banknote', 'credit-card', 'piggy-bank', 'landmark', 'smartphone', 'coins', 'building-2'] as const
 export const ACCOUNT_COLOR_OPTIONS = ['#059669', '#1e40af', '#7c3aed', '#db2777', '#dc2626', '#ea580c', '#ca8a04', '#0891b2'] as const
+
+// Satuan defaults for liquid assets
+export const LIQUID_ASSET_TYPE_SATUAN: Record<string, string> = {
+  cash: 'rupiah',
+  bank: 'rupiah',
+  ewallet: 'rupiah',
+  loan: 'rupiah',
+  prepaid_card: 'rupiah',
+}
 
 import type { BudgetType } from './types'
 

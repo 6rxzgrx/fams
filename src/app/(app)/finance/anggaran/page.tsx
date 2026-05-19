@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useSyncExternalStore } from 'react';
 import {
 	Target,
 	SlidersHorizontal,
@@ -296,6 +296,8 @@ function PenggunaanChart({
 	daysInMonth: number;
 	dailyAllowance: number;
 }) {
+	const mounted = useSyncExternalStore(() => () => {}, () => true, () => false);
+
 	const actualsMap = new Map(cumulativePoints.map(([d, v]) => [d, v]));
 	const maxActual = cumulativePoints.length
 		? Math.max(...cumulativePoints.map(([, v]) => v))
@@ -337,102 +339,106 @@ function PenggunaanChart({
 				)}
 			</div>
 
-			<ChartContainer
-				config={penggunaanConfig}
-				className="w-full mt-3"
-				style={{ height: 220 }}
-			>
-				<ComposedChart
-					accessibilityLayer
-					data={data}
-					margin={{ left: 0, right: 8, top: 8, bottom: 0 }}
+			{mounted ? (
+				<ChartContainer
+					config={penggunaanConfig}
+					className="w-full mt-3"
+					style={{ height: 220 }}
 				>
-					<CartesianGrid vertical={false} strokeOpacity={0.15} />
-					<XAxis
-						dataKey="day"
-						tickLine={false}
-						axisLine={false}
-						tickMargin={8}
-						tick={{ fontSize: 10 }}
-						ticks={xTicks}
-					/>
-					<YAxis
-						tickLine={false}
-						axisLine={false}
-						tickMargin={4}
-						tick={{ fontSize: 10 }}
-						tickFormatter={(v) => formatMoneyCompact(v)}
-						domain={[0, maxVal]}
-						width={52}
-					/>
-					<ChartTooltip
-						cursor={false}
-						content={({ active, payload, label }) => {
-							if (!active || !payload?.length) return null;
-							return (
-								<div className="rounded-lg border border-border bg-background px-3 py-2 text-xs shadow-xl">
-									<p className="mb-1.5 font-semibold text-foreground">
-										Hari ke-{label}
-									</p>
-									{payload.map((entry, i) =>
-										entry.value !== null ? (
-											<div key={i} className="flex items-center gap-2">
-												<span
-													className="size-2 rounded-full"
-													style={{ backgroundColor: entry.color }}
-												/>
-												<span className="text-muted-foreground">
-													{
-														penggunaanConfig[
-															entry.dataKey as keyof typeof penggunaanConfig
-														]?.label
-													}
-												</span>
-												<span className="ml-auto font-mono font-semibold tabular-nums">
-													{formatMoneyCompact(entry.value as number)}
-												</span>
-											</div>
-										) : null,
-									)}
-								</div>
-							);
-						}}
-					/>
-					<defs>
-						<linearGradient id="pgAreaGrad" x1="0" y1="0" x2="0" y2="1">
-							<stop
-								offset="5%"
-								stopColor="var(--color-actuals)"
-								stopOpacity={0.7}
-							/>
-							<stop
-								offset="95%"
-								stopColor="var(--color-actuals)"
-								stopOpacity={0.03}
-							/>
-						</linearGradient>
-					</defs>
-					<Area
-						dataKey="actuals"
-						type="monotone"
-						fill="url(#pgAreaGrad)"
-						fillOpacity={0.4}
-						stroke="var(--color-actuals)"
-						strokeWidth={2.5}
-						dot={false}
-						connectNulls={false}
-					/>
-					<Line
-						dataKey="plan"
-						type="linear"
-						stroke="var(--color-plan)"
-						strokeWidth={1.5}
-						strokeDasharray="5 5"
-						dot={false}
-						connectNulls
-					/>
-				</ComposedChart>
-			</ChartContainer>
+					<ComposedChart
+						accessibilityLayer
+						data={data}
+						margin={{ left: 0, right: 8, top: 8, bottom: 0 }}
+					>
+						<CartesianGrid vertical={false} strokeOpacity={0.15} />
+						<XAxis
+							dataKey="day"
+							tickLine={false}
+							axisLine={false}
+							tickMargin={8}
+							tick={{ fontSize: 10 }}
+							ticks={xTicks}
+						/>
+						<YAxis
+							tickLine={false}
+							axisLine={false}
+							tickMargin={4}
+							tick={{ fontSize: 10 }}
+							tickFormatter={(v) => formatMoneyCompact(v)}
+							domain={[0, maxVal]}
+							width={52}
+						/>
+						<ChartTooltip
+							cursor={false}
+							content={({ active, payload, label }) => {
+								if (!active || !payload?.length) return null;
+								return (
+									<div className="rounded-lg border border-border bg-background px-3 py-2 text-xs shadow-xl">
+										<p className="mb-1.5 font-semibold text-foreground">
+											Hari ke-{label}
+										</p>
+										{payload.map((entry, i) =>
+											entry.value !== null ? (
+												<div key={i} className="flex items-center gap-2">
+													<span
+														className="size-2 rounded-full"
+														style={{ backgroundColor: entry.color }}
+													/>
+													<span className="text-muted-foreground">
+														{
+															penggunaanConfig[
+																entry.dataKey as keyof typeof penggunaanConfig
+															]?.label
+														}
+													</span>
+													<span className="ml-auto font-mono font-semibold tabular-nums">
+														{formatMoneyCompact(entry.value as number)}
+													</span>
+												</div>
+											) : null,
+										)}
+									</div>
+								);
+							}}
+						/>
+						<defs>
+							<linearGradient id="pgAreaGrad" x1="0" y1="0" x2="0" y2="1">
+								<stop
+									offset="5%"
+									stopColor="var(--color-actuals)"
+									stopOpacity={0.7}
+								/>
+								<stop
+									offset="95%"
+									stopColor="var(--color-actuals)"
+									stopOpacity={0.03}
+								/>
+							</linearGradient>
+						</defs>
+						<Area
+							dataKey="actuals"
+							type="monotone"
+							fill="url(#pgAreaGrad)"
+							fillOpacity={0.4}
+							stroke="var(--color-actuals)"
+							strokeWidth={2.5}
+							dot={false}
+							connectNulls={false}
+						/>
+						<Line
+							dataKey="plan"
+							type="linear"
+							stroke="var(--color-plan)"
+							strokeWidth={1.5}
+							strokeDasharray="5 5"
+							dot={false}
+							connectNulls
+						/>
+					</ComposedChart>
+				</ChartContainer>
+			) : (
+				<div className="w-full mt-3" style={{ height: 220 }} aria-hidden="true" />
+			)}
 
 			<div className="flex items-center gap-4 pt-2 border-t border-border mt-2">
 				<div className="flex items-center gap-1.5 text-[10.5px] text-muted-foreground">
@@ -488,7 +494,7 @@ function BudgetTypeSection({
 	spentByCategory: Record<string, number>;
 	txLoading: boolean;
 }) {
-	const [expanded, setExpanded] = useState(true);
+	const [expanded, setExpanded] = useState(false);
 	const color = BUDGET_TYPE_COLORS[bt];
 	const label = BUDGET_TYPE_LABELS[bt];
 	const Icon = BUDGET_TYPE_ICONS[bt];

@@ -23,27 +23,29 @@ import {
 import { AddTransactionDialog } from '@/components/nav/add-transaction-dialog';
 import { PageContainer } from '@/components/layout/page-container';
 import { Skeleton } from '@/components/ui/skeleton';
-import { MonthPicker } from '@/components/finance/month-picker';
 import { TransactionItem } from '@/components/finance/transaction-item';
 import { CashflowChart } from '@/components/finance/cashflow-chart';
 import { IncomeExpenseBars } from '@/components/finance/income-expense-bars';
 import { CategoryIcon } from '@/components/finance/category-icon';
+import { StatusChip } from '@/components/finance/status-chip';
 
 import { useAccounts } from '@/hooks/use-accounts';
 import { useAssets } from '@/hooks/use-assets';
+import { useBills } from '@/hooks/use-bills';
 import { useBudgets } from '@/hooks/use-budgets';
 import { useCategories } from '@/hooks/use-categories';
 import { useTransactions } from '@/hooks/use-transactions';
+import { usePriceRates } from '@/hooks/use-price-rates';
 
 import { formatMoney, formatMoneyCompact } from '@/lib/money';
 import { cn } from '@/lib/utils';
 import { getMonthRange, sumByType } from '@/domain/transactions';
 import {
-	ASSET_TYPE_SATUAN,
 	BUDGET_TYPE_LABELS,
 	BUDGET_TYPE_COLORS,
 } from '@/domain/constants';
-import type { BudgetType } from '@/domain/types';
+import { buildRegistryDataLegacy } from '@/components/finance/asset-registry-shared';
+import type { Bill, BudgetType } from '@/domain/types';
 import type { Transaction, TransactionCategory } from '@/domain/types';
 
 function currentYM() {
@@ -80,7 +82,7 @@ function fullMonthLabel(ym: string) {
 }
 
 export default function RingkasanPage() {
-	const [month, setMonth] = useState(currentYM);
+	const month = currentYM();
 	const [manualOpen, setManualOpen] = useState(false);
 
 	// Month boundaries
@@ -104,8 +106,10 @@ export default function RingkasanPage() {
 
 	const { accounts, isLoading: accountsLoading } = useAccounts();
 	const { assets, isLoading: assetsLoading } = useAssets();
+	const { bills, isLoading: billsLoading } = useBills();
 	const { categories } = useCategories();
 	const { budgets } = useBudgets(month);
+	const { rates } = usePriceRates();
 	const { transactions: monthTx, isLoading: monthTxLoading } = useTransactions({
 		from: monthFrom,
 		to: monthTo,
@@ -124,23 +128,26 @@ export default function RingkasanPage() {
 	const { transactions: recentTx } = useTransactions({ limit: 5 });
 
 	// ── Aggregates ───────────────────────────────────────────────
+	const { liquidItems, nonLiquidItems, totalNilai } = buildRegistryDataLegacy(accounts, assets, rates);
+
 	const liquidAccounts = accounts.filter(
 		(a) => a.include_in_saldo !== 'false' && !a.deleted_at,
 	);
-	const totalLiquid = liquidAccounts.reduce(
+	// Saldo Tersedia: only accounts included in saldo (for MoneyLeftCard)
+	const totalSaldo = liquidAccounts.reduce(
 		(sum, a) => sum + (parseInt(a.current_balance, 10) || 0),
 		0,
 	);
+	// Aset Kekayaan breakdown — matches assets page totalNilai components
+	const totalLiquid = liquidItems.reduce((sum, i) => sum + i.value, 0);
+	const totalAssetValue = nonLiquidItems.reduce((s, i) => {
+		if (i.satuan === 'rupiah') return s + i.value;
+		if (i.idrValue != null) return s + i.idrValue;
+		return s;
+	}, 0);
 
 	const aliveAssets = assets.filter((a) => !a.deleted_at);
-	// Only sum assets denominated in rupiah; non-rupiah assets (grams, lots, etc.) are meaningless in IDR totals
-	const totalAssetValue = aliveAssets
-		.filter(
-			(a) => (a.satuan || ASSET_TYPE_SATUAN[a.type] || 'rupiah') === 'rupiah',
-		)
-		.reduce((sum, a) => sum + (parseFloat(a.value) || 0), 0);
-
-	const netWorth = totalLiquid + totalAssetValue;
+	const netWorth = totalNilai;
 	const monthSums = sumByType(monthTx);
 	const netMonth = monthSums.income - monthSums.expense;
 
@@ -275,7 +282,6 @@ export default function RingkasanPage() {
 					</p>
 				</div>
 				<div className="flex shrink-0 items-center gap-2">
-					<MonthPicker value={month} onChange={setMonth} />
 					<button
 						type="button"
 						onClick={() => setManualOpen(true)}
@@ -292,7 +298,7 @@ export default function RingkasanPage() {
 			<div className="flex snap-x snap-mandatory overflow-x-auto gap-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:grid lg:grid-cols-[3fr_1fr] lg:overflow-visible lg:items-stretch">
 				<div className="w-[calc(100%-2rem)] shrink-0 snap-start lg:w-auto">
 					<MoneyLeftCard
-						totalLiquid={totalLiquid}
+						totalLiquid={totalSaldo}
 						accounts={liquidAccounts}
 						totalBudget={totalBudget}
 						totalBudgetSpent={totalBudgetSpent}
@@ -346,7 +352,7 @@ export default function RingkasanPage() {
 
 				{/* Right col (2fr): Tagihan → Transaksi Terbaru */}
 				<div className="space-y-4 lg:flex-[2] lg:space-y-5">
-					<BillsCard />
+					<BillsCard bills={bills} isLoading={billsLoading} />
 					<RecentTxCard
 						transactions={recentTx}
 						categories={categories}
@@ -604,7 +610,7 @@ function TotalKekayaanCard({
 
 			{/* Header */}
 			<div className="relative flex items-center justify-between">
-				<p className="text-eyebrow text-muted-foreground">Total Kekayaan</p>
+				<p className="text-eyebrow text-muted-foreground">Aset Kekayaan</p>
 				<button
 					type="button"
 					onClick={() => setHidden((h) => !h)}
@@ -954,9 +960,46 @@ function CashflowCard({
 }
 
 /* ─────────────────────────────────────────────────────────────
-   Bills card (skeleton — bills feature not yet implemented)
+   Bills card
    ──────────────────────────────────────────────────────────── */
-function BillsCard() {
+function billDueStatus(dateStr: string): 'overdue' | 'due-soon' | 'unpaid' {
+	const today = new Date();
+	today.setHours(0, 0, 0, 0);
+	const due = new Date(dateStr);
+	due.setHours(0, 0, 0, 0);
+	const diff = Math.ceil((due.getTime() - today.getTime()) / 86_400_000);
+	if (diff < 0) return 'overdue';
+	if (diff <= 7) return 'due-soon';
+	return 'unpaid';
+}
+
+function formatBillDue(dateStr: string): string {
+	try {
+		return new Date(dateStr).toLocaleDateString('id-ID', {
+			day: 'numeric',
+			month: 'short',
+		});
+	} catch {
+		return dateStr;
+	}
+}
+
+function BillsCard({ bills, isLoading }: { bills: Bill[]; isLoading: boolean }) {
+	const today = new Date();
+	today.setHours(0, 0, 0, 0);
+	const in30 = new Date(today);
+	in30.setDate(today.getDate() + 30);
+
+	const upcoming = bills
+		.filter((b) => {
+			if (b.deleted_at) return false;
+			const due = new Date(b.due_date);
+			due.setHours(0, 0, 0, 0);
+			return due <= in30;
+		})
+		.sort((a, b) => a.due_date.localeCompare(b.due_date))
+		.slice(0, 5);
+
 	return (
 		<Card>
 			<CardHead
@@ -965,25 +1008,52 @@ function BillsCard() {
 				actionHref="/finance/bills"
 				actionLabel="Semua"
 			/>
-			<div className="flex flex-col items-center py-6 text-center">
-				<span className="mb-2 inline-flex size-10 items-center justify-center rounded-pill bg-muted">
-					<Receipt
-						className="size-5 text-muted-foreground"
-						strokeWidth={1.75}
-						aria-hidden="true"
-					/>
-				</span>
-				<p className="text-sm font-semibold">Belum ada tagihan</p>
-				<p className="mt-1 max-w-[200px] text-[12.5px] text-muted-foreground">
-					Tagihan & langganan akan muncul di sini.
-				</p>
-				<Link
-					href="/finance/bills"
-					className="mt-3 inline-flex items-center gap-1 text-[12.5px] font-semibold text-foreground hover:underline"
-				>
-					Atur tagihan <ArrowUpRight className="size-3.5" strokeWidth={2.25} />
-				</Link>
-			</div>
+			{isLoading ? (
+				<div className="space-y-3">
+					{[0, 1, 2].map((i) => (
+						<Skeleton key={i} className="h-10 w-full" />
+					))}
+				</div>
+			) : upcoming.length === 0 ? (
+				<div className="flex flex-col items-center py-6 text-center">
+					<span className="mb-2 inline-flex size-10 items-center justify-center rounded-pill bg-muted">
+						<Receipt
+							className="size-5 text-muted-foreground"
+							strokeWidth={1.75}
+							aria-hidden="true"
+						/>
+					</span>
+					<p className="text-sm font-semibold">Tidak ada tagihan</p>
+					<p className="mt-1 max-w-[200px] text-[12.5px] text-muted-foreground">
+						Tidak ada tagihan dalam 30 hari ke depan.
+					</p>
+					<Link
+						href="/finance/bills"
+						className="mt-3 inline-flex items-center gap-1 text-[12.5px] font-semibold text-foreground hover:underline"
+					>
+						Atur tagihan <ArrowUpRight className="size-3.5" strokeWidth={2.25} />
+					</Link>
+				</div>
+			) : (
+				<ul className="divide-y divide-border">
+					{upcoming.map((bill) => (
+						<li key={bill.id} className="flex items-center gap-3 py-3">
+							<div className="min-w-0 flex-1">
+								<p className="truncate text-[13px] font-semibold">{bill.name}</p>
+								<p className="text-[11.5px] text-muted-foreground">
+									{formatBillDue(bill.due_date)}
+								</p>
+							</div>
+							<div className="shrink-0 text-right">
+								<p className="mb-1 text-[13px] font-bold tabular-nums">
+									{formatMoneyCompact(parseInt(bill.amount, 10) || 0)}
+								</p>
+								<StatusChip status={billDueStatus(bill.due_date)} />
+							</div>
+						</li>
+					))}
+				</ul>
+			)}
 		</Card>
 	);
 }

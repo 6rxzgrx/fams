@@ -8,10 +8,13 @@ export type Role = z.infer<typeof RoleSchema>
 export const TransactionTypeSchema = z.enum(['income', 'expense', 'transfer', 'adjustment', 'refund'])
 export type TransactionType = z.infer<typeof TransactionTypeSchema>
 
-export const AccountTypeSchema = z.enum(['cash', 'bank', 'ewallet', 'loan', 'investment', 'prepaid_card'])
-export type AccountType = z.infer<typeof AccountTypeSchema>
+export const AssetKindSchema = z.enum(['liquid', 'non_liquid'])
+export type AssetKind = z.infer<typeof AssetKindSchema>
 
-export const AssetTypeSchema = z.enum(['investment', 'precious_metal', 'stocks', 'crypto', 'real_asset', 'business'])
+export const AssetTypeSchema = z.enum([
+  'cash', 'bank', 'ewallet', 'loan', 'prepaid_card',
+  'investment', 'precious_metal', 'stocks', 'crypto', 'real_asset', 'business',
+])
 export type AssetType = z.infer<typeof AssetTypeSchema>
 
 export const CategoryTypeSchema = z.enum(['income', 'expense', 'transfer'])
@@ -36,61 +39,23 @@ export const FamilyMemberSchema = z.object({
 
 export type FamilyMember = z.infer<typeof FamilyMemberSchema>
 
-// ─── Account ─────────────────────────────────────────────────────────────────
-
-export const AccountSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  type: AccountTypeSchema,
-  currency: z.string().default('IDR'),
-  current_balance: z.string().default('0'),
-  bank_name: z.string().optional().default(''),
-  account_number: z.string().optional().default(''),
-  color: z.string().optional().default('#1e40af'),
-  icon: z.string().optional().default('wallet'),
-  notes: z.string().optional().default(''),
-  created_by: z.string(),
-  created_at: z.string(),
-  updated_at: z.string(),
-  deleted_at: z.string().optional().default(''),
-  // Empty string means true (default include); only explicit 'false' excludes
-  include_in_saldo: z.string().optional().default('true'),
-})
-
-export type Account = z.infer<typeof AccountSchema>
-
-export const CreateAccountSchema = z.object({
-  name: z.string().min(1, 'Nama akun wajib diisi').max(100),
-  type: AccountTypeSchema,
-  currency: z.string().default('IDR'),
-  current_balance: z.number().int().default(0),
-  bank_name: z.string().max(100).default(''),
-  account_number: z.string().max(100).default(''),
-  color: z.string().default('#1e40af'),
-  icon: z.string().default('wallet'),
-  notes: z.string().max(500).default(''),
-  include_in_saldo: z.boolean().default(true),
-})
-
-export type CreateAccountInput = z.infer<typeof CreateAccountSchema>
-
-export const UpdateAccountSchema = CreateAccountSchema.partial()
-export type UpdateAccountInput = z.infer<typeof UpdateAccountSchema>
-
-// ─── Asset ────────────────────────────────────────────────────────────────────
+// ─── Asset (unified — replaces former Account + Asset) ───────────────────────
 
 export const AssetSchema = z.object({
   id: z.string(),
+  kind: AssetKindSchema,
   name: z.string(),
   type: AssetTypeSchema.catch('real_asset'),
-  value: z.string().default('0'),
-  satuan: z.string().default('rupiah'),
   currency: z.string().default('IDR'),
-  account_id: z.string().optional().default(''),
-  include_in_saldo: z.string().optional().default('false'),
-  notes: z.string().optional().default(''),
-  icon: z.string().optional().default('briefcase'),
+  current_balance: z.string().default('0'),
+  satuan: z.string().default('rupiah'),
+  price_symbol: z.string().optional().default(''),
+  bank_name: z.string().optional().default(''),
+  account_number: z.string().optional().default(''),
   color: z.string().optional().default('#64748b'),
+  icon: z.string().optional().default('wallet'),
+  notes: z.string().optional().default(''),
+  include_in_saldo: z.string().optional().default('true'),
   created_by: z.string(),
   created_at: z.string(),
   updated_at: z.string(),
@@ -99,23 +64,35 @@ export const AssetSchema = z.object({
 
 export type Asset = z.infer<typeof AssetSchema>
 
+// Backward-compat alias — liquid assets are still called "accounts" in existing callers
+export type Account = Asset
+
 export const CreateAssetSchema = z.object({
+  kind: AssetKindSchema,
   name: z.string().min(1, 'Nama aset wajib diisi').max(100),
   type: AssetTypeSchema,
-  value: z.number().nonnegative('Nilai tidak boleh negatif'),
-  satuan: z.string().default('rupiah'),
   currency: z.string().default('IDR'),
-  account_id: z.string().default(''),
-  include_in_saldo: z.boolean().default(false),
-  notes: z.string().max(500).default(''),
-  icon: z.string().default('briefcase'),
+  current_balance: z.number().nonnegative('Nilai tidak boleh negatif').default(0),
+  satuan: z.string().default('rupiah'),
+  price_symbol: z.string().default(''),
+  bank_name: z.string().max(100).default(''),
+  account_number: z.string().max(100).default(''),
   color: z.string().default('#64748b'),
+  icon: z.string().default('wallet'),
+  notes: z.string().max(500).default(''),
+  include_in_saldo: z.boolean().default(true),
 })
 
 export type CreateAssetInput = z.infer<typeof CreateAssetSchema>
 
-export const UpdateAssetSchema = CreateAssetSchema.partial()
+// Backward-compat alias
+export type CreateAccountInput = CreateAssetInput
+
+export const UpdateAssetSchema = CreateAssetSchema.omit({ kind: true }).partial()
 export type UpdateAssetInput = z.infer<typeof UpdateAssetSchema>
+
+// Backward-compat alias
+export type UpdateAccountInput = UpdateAssetInput
 
 // ─── Transaction Category ─────────────────────────────────────────────────────
 
@@ -373,6 +350,33 @@ export const CreateBillPaymentSchema = z.object({
 })
 
 export type CreateBillPaymentInput = z.infer<typeof CreateBillPaymentSchema>
+
+// ─── Price Rate ───────────────────────────────────────────────────────────────
+
+export const PriceRateSchema = z.object({
+  id: z.string(),
+  symbol: z.string(),
+  label: z.string(),
+  source: z.enum(['api', 'manual']),
+  value_idr_per_unit: z.string().default('0'),
+  unit: z.string().default(''),
+  raw_api_data: z.string().optional().default(''),
+  updated_at: z.string(),
+})
+
+export type PriceRate = z.infer<typeof PriceRateSchema>
+
+export const CreatePriceRateSchema = z.object({
+  symbol: z.string().min(1, 'Symbol wajib diisi').max(50).toUpperCase(),
+  label: z.string().min(1, 'Label wajib diisi').max(100),
+  unit: z.string().min(1, 'Satuan wajib diisi').max(50),
+  value_idr_per_unit: z.number().nonnegative('Nilai tidak boleh negatif'),
+})
+
+export type CreatePriceRateInput = z.infer<typeof CreatePriceRateSchema>
+
+export const UpdatePriceRateSchema = CreatePriceRateSchema.partial()
+export type UpdatePriceRateInput = z.infer<typeof UpdatePriceRateSchema>
 
 // ─── API Response ─────────────────────────────────────────────────────────────
 

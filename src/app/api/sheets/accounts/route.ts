@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { accountsRepo } from '@/integrations/sheets/repositories/accounts'
-import { CreateAccountSchema, ok, fail } from '@/domain/types'
+import { assetsRepo } from '@/integrations/sheets/repositories/assets'
+import { CreateAssetSchema, ok, fail } from '@/domain/types'
 import { canRead, canWrite } from '@/domain/permissions'
 import { generateId } from '@/lib/ulid'
 import { writeAudit } from '@/lib/audit'
@@ -16,7 +16,8 @@ export async function GET() {
   }
 
   try {
-    const accounts = await accountsRepo.findAll()
+    const all = await assetsRepo.findAll()
+    const accounts = all.filter((a) => a.kind === 'liquid')
     return NextResponse.json(ok(accounts))
   } catch (err) {
     console.error('[accounts GET]', err)
@@ -42,30 +43,34 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json()
-    const parsed = CreateAccountSchema.safeParse(body)
+    // Client sends without kind; we enforce kind='liquid' server-side
+    const parsed = CreateAssetSchema.omit({ kind: true }).safeParse(body)
     if (!parsed.success) {
       return NextResponse.json(fail(parsed.error.issues[0].message), { status: 400 })
     }
 
     const now = new Date().toISOString()
-    const id = generateId('account')
+    const id = generateId('asset')
 
-    const account = await accountsRepo.create({
+    const account = await assetsRepo.create({
       id,
+      kind: 'liquid',
       name: parsed.data.name,
       type: parsed.data.type,
       currency: parsed.data.currency,
       current_balance: String(parsed.data.current_balance),
+      satuan: 'rupiah',
+      price_symbol: '',
       bank_name: parsed.data.bank_name,
       account_number: parsed.data.account_number,
       color: parsed.data.color,
       icon: parsed.data.icon,
       notes: parsed.data.notes,
+      include_in_saldo: parsed.data.include_in_saldo ? 'true' : 'false',
       created_by: member.id,
       created_at: now,
       updated_at: now,
       deleted_at: '',
-      include_in_saldo: parsed.data.include_in_saldo ? 'true' : 'false',
     })
 
     await writeAudit({

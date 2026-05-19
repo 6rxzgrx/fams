@@ -5,6 +5,8 @@ import { useState } from 'react';
 import {
 	ArrowLeftRight,
 	Briefcase,
+	ChevronDown,
+	ChevronRight,
 	ExternalLink,
 	Eye,
 	EyeOff,
@@ -29,6 +31,7 @@ import { TransactionItem } from '@/components/finance/transaction-item';
 import { CategoryIcon } from '@/components/finance/category-icon';
 import {
 	buildRegistryData,
+	buildRegistryDataLegacy,
 	type RegistryItem,
 } from '@/components/finance/asset-registry-shared';
 import {
@@ -41,10 +44,11 @@ import { useAccounts } from '@/hooks/use-accounts';
 import { useAssets } from '@/hooks/use-assets';
 import { useAssetSnapshots } from '@/hooks/use-asset-snapshots';
 import { useCategories } from '@/hooks/use-categories';
+import { usePriceRates } from '@/hooks/use-price-rates';
 import { useTransactions } from '@/hooks/use-transactions';
 import { formatMoneyCompact } from '@/lib/money';
 import { cn } from '@/lib/utils';
-import type { Asset, TransactionCategory } from '@/domain/types';
+import type { TransactionCategory } from '@/domain/types';
 
 function monthLabel(ym: string) {
 	const m = parseInt(ym.split('-')[1], 10);
@@ -80,6 +84,7 @@ export default function AsetPage() {
 	} = useAssets();
 	const { categories } = useCategories();
 	const { snapshots } = useAssetSnapshots(6);
+	const { rates } = usePriceRates();
 	const [detail, setDetail] = useState<RegistryItem | null>(null);
 	const [hideValues, setHideValues] = useState(false);
 
@@ -91,13 +96,16 @@ export default function AsetPage() {
 		liquidGroups,
 		nonLiquidGroups,
 		totalSaldo,
+		totalNilai,
 		hasItems,
-	} = buildRegistryData(accounts, assets);
+	} = buildRegistryDataLegacy(accounts, assets, rates);
 
 	const liquidTotal = liquidItems.reduce((s, i) => s + i.value, 0);
-	const nonLiquidTotal = nonLiquidItems
-		.filter((i) => i.satuan === 'rupiah')
-		.reduce((s, i) => s + i.value, 0);
+	const nonLiquidTotal = nonLiquidItems.reduce((s, i) => {
+		if (i.satuan === 'rupiah') return s + i.value;
+		if (i.idrValue != null) return s + i.idrValue;
+		return s;
+	}, 0);
 
 	const { growthPct, avgMonthly, currentMonth } = computeGrowthStats(snapshots);
 
@@ -226,6 +234,22 @@ export default function AsetPage() {
 											<Eye className="size-4" strokeWidth={2} />
 										)}
 									</button>
+								</div>
+
+								<div className="mt-2">
+									{hideValues ? (
+										<span className="text-[22px] font-bold tabular-nums tracking-tight">
+											••••••
+										</span>
+									) : (
+										<MoneyDisplay
+											amount={totalNilai}
+											className="text-[22px] font-bold"
+										/>
+									)}
+									<p className="text-[11px] text-muted-foreground">
+										Total kekayaan dalam rupiah
+									</p>
 								</div>
 
 								<div className="mt-3 flex items-center gap-4">
@@ -362,27 +386,31 @@ export default function AsetPage() {
 					</div>
 
 					{/* Asset list sections */}
-					<div className="lg:overflow-hidden lg:rounded-lg lg:border lg:border-border lg:bg-surface">
-						{Object.keys(liquidGroups).length > 0 && (
+					{Object.keys(liquidGroups).length > 0 && (
+						<div className="overflow-hidden rounded-xl border border-border bg-surface">
 							<AsetGroupSection
 								title="Aset Likuid"
 								subTitle="Ketuk untuk melihat detail dan transaksi."
-								totalLabel="TOTAL ASET LIKUID"
 								total={liquidTotal}
+								dotColor="#3b82f6"
 								groups={liquidGroups}
 								onSelect={setDetail}
 							/>
-						)}
+						</div>
+					)}
 
-						{Object.keys(nonLiquidGroups).length > 0 && (
+					{Object.keys(nonLiquidGroups).length > 0 && (
+						<div className="overflow-hidden rounded-xl border border-border bg-surface">
 							<AsetGroupSection
 								title="Aset Non-Likuid"
 								subTitle="Ketuk untuk melihat detail nilai aset."
+								total={nonLiquidTotal}
+								dotColor="#eab308"
 								groups={nonLiquidGroups}
 								onSelect={setDetail}
 							/>
-						)}
-					</div>
+						</div>
+					)}
 				</div>
 			)}
 
@@ -484,81 +512,107 @@ function LegendDot({ color, label }: { color: string; label: string }) {
 function AsetGroupSection({
 	title,
 	subTitle,
-	totalLabel,
 	total,
+	dotColor,
 	groups,
 	onSelect,
+	defaultExpanded = false,
 }: {
 	title: string;
 	subTitle?: string;
-	totalLabel?: string;
 	total?: number;
+	dotColor?: string;
 	groups: Record<string, RegistryItem[]>;
 	onSelect: (item: RegistryItem) => void;
+	defaultExpanded?: boolean;
 }) {
+	const [expanded, setExpanded] = useState(defaultExpanded);
+
 	return (
-		<div className="lg:border-t lg:border-border">
-			<div className="flex items-center justify-between gap-3 px-5 pb-1.5 pt-3 lg:bg-muted/20 lg:py-2.5">
-				<div>
-					<p className="text-sm font-semibold">{title}</p>
-					{subTitle && (
-						<p className="text-[11px] text-muted-foreground">{subTitle}</p>
+		<div>
+			<button
+				type="button"
+				className="flex w-full items-center justify-between gap-3 px-5 pb-1.5 pt-3 text-left bg-muted/20 py-2.5"
+				onClick={() => setExpanded((e) => !e)}
+			>
+				<div className="flex items-center gap-2.5 min-w-0">
+					{dotColor && (
+						<span
+							className="size-2.5 shrink-0 rounded-full"
+							style={{ backgroundColor: dotColor }}
+						/>
+					)}
+					<div>
+						<p className="text-sm font-semibold">{title}</p>
+						{subTitle && (
+							<p className="text-[11px] text-muted-foreground">{subTitle}</p>
+						)}
+					</div>
+				</div>
+				<div className="flex items-center gap-2 shrink-0">
+					{total !== undefined && (
+						<MoneyDisplay
+							amount={total}
+							className="text-sm font-semibold tabular-nums"
+						/>
+					)}
+					{expanded ? (
+						<ChevronDown className="size-4 text-muted-foreground" />
+					) : (
+						<ChevronRight className="size-4 text-muted-foreground" />
 					)}
 				</div>
-				{totalLabel !== undefined && total !== undefined && (
-					<div className="text-right">
-						<p className="text-eyebrow text-muted-foreground">{totalLabel}</p>
-						<MoneyDisplay amount={total} className="text-sm text-blue-500" />
-					</div>
-				)}
-			</div>
-			{Object.entries(groups).map(([groupLabel, items], idx) => (
-				<section
-					key={groupLabel}
-					className={cn(
-						'mb-2 lg:mb-0',
-						idx > 0 && 'lg:border-t lg:border-border/60',
-					)}
-				>
-					<div className="px-5 pb-1 pt-2 lg:bg-muted/40 lg:py-1.5">
-						<p className="text-eyebrow text-muted-foreground">{groupLabel}</p>
-					</div>
-					<div className="divide-y divide-border bg-surface">
-						{items.map((item) => (
-							<button
-								key={item.id}
-								type="button"
-								onClick={() => onSelect(item)}
-								className="flex w-full items-center gap-3 px-5 py-3.5 text-left transition-colors hover:bg-muted/40"
-							>
-								<span
-									className="flex size-10 shrink-0 items-center justify-center rounded-full text-white"
-									style={{ backgroundColor: item.color }}
+			</button>
+
+			{expanded &&
+				Object.entries(groups).map(([groupLabel, items], idx) => (
+					<section
+						key={groupLabel}
+						className={cn(idx > 0 && 'border-t border-border/60')}
+					>
+						<div className="px-5 pb-1 pt-2 bg-muted/40 py-1.5">
+							<p className="text-eyebrow text-muted-foreground">{groupLabel}</p>
+						</div>
+						<div className="divide-y divide-border bg-surface">
+							{items.map((item) => (
+								<button
+									key={item.id}
+									type="button"
+									onClick={() => onSelect(item)}
+									className="flex w-full items-center gap-3 px-5 py-3.5 text-left transition-colors hover:bg-muted/40"
 								>
-									<CategoryIcon icon={item.icon} className="size-5" />
-								</span>
-								<div className="min-w-0 flex-1">
-									<div className="flex items-center gap-1.5">
-										<p className="truncate font-medium">{item.name}</p>
-										{!item.includeInSaldo && (
-											<Badge
-												variant="secondary"
-												className="shrink-0 px-1.5 py-0 text-[10px]"
-											>
-												Dikecualikan
-											</Badge>
-										)}
+									<span
+										className="flex size-10 shrink-0 items-center justify-center rounded-full text-white"
+										style={{ backgroundColor: item.color }}
+									>
+										<CategoryIcon icon={item.icon} className="size-5" />
+									</span>
+									<div className="min-w-0 flex-1">
+										<div className="flex items-center gap-1.5">
+											<p className="truncate font-medium">{item.name}</p>
+											{!item.includeInSaldo && (
+												<Badge
+													variant="secondary"
+													className="shrink-0 px-1.5 py-0 text-[10px]"
+												>
+													Dikecualikan
+												</Badge>
+											)}
+										</div>
+										<p className="truncate text-xs text-muted-foreground">
+											{item.subLabel || item.typeLabel}
+										</p>
 									</div>
-									<p className="truncate text-xs text-muted-foreground">
-										{item.subLabel || item.typeLabel}
-									</p>
-								</div>
-								<QuantityDisplay value={item.value} satuan={item.satuan} />
-							</button>
-						))}
-					</div>
-				</section>
-			))}
+									<QuantityDisplay
+										value={item.value}
+										satuan={item.satuan}
+										idrValue={item.idrValue}
+									/>
+								</button>
+							))}
+						</div>
+					</section>
+				))}
 		</div>
 	);
 }
@@ -570,18 +624,14 @@ function AsetDetailDialog({
 	detail: RegistryItem;
 	categories: TransactionCategory[];
 }) {
-	const linkedAccountId =
-		detail.kind === 'account'
-			? detail.id
-			: (detail.raw as Asset).account_id || '__none__';
+	const linkedAccountId = detail.kind === 'liquid' ? detail.id : '__none__';
 
 	const { transactions, isLoading, error } = useTransactions({
 		account_id: linkedAccountId,
 		limit: 5,
 	});
 
-	const asset = detail.kind === 'asset' ? (detail.raw as Asset) : null;
-	const hasLinkedAccount = detail.kind === 'account' || !!asset?.account_id;
+	const hasLinkedAccount = detail.kind === 'liquid';
 
 	const transactionsHref = `/finance/transactions?account_id=${linkedAccountId}`;
 
@@ -605,7 +655,7 @@ function AsetDetailDialog({
 			<div className="grid grid-cols-2 gap-3">
 				<InfoCard
 					label={
-						detail.kind === 'account'
+						detail.kind === 'liquid'
 							? 'Saldo Saat Ini'
 							: detail.satuan === 'rupiah'
 								? 'Nilai Aset'
@@ -615,6 +665,7 @@ function AsetDetailDialog({
 						<QuantityDisplay
 							value={detail.value}
 							satuan={detail.satuan}
+							idrValue={detail.idrValue}
 							className="text-[22px]"
 						/>
 					}
@@ -634,11 +685,9 @@ function AsetDetailDialog({
 					<div>
 						<h3 className="text-sm font-semibold">Transaksi Terkait</h3>
 						<p className="text-[12px] text-muted-foreground">
-							{detail.kind === 'account'
+							{detail.kind === 'liquid'
 								? 'Riwayat transaksi akun ini.'
-								: hasLinkedAccount
-									? 'Transaksi dari akun yang ditautkan.'
-									: 'Aset ini belum ditautkan ke akun.'}
+								: 'Aset non-likuid tidak memiliki riwayat transaksi.'}
 						</p>
 					</div>
 					{hasLinkedAccount && (

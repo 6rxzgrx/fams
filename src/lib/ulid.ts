@@ -17,6 +17,7 @@ const PREFIXES = {
   csm: 'csm',
   budget: 'bdg',
   snapshot: 'snap',
+  pr: 'pr',
 } as const
 
 type Entity = keyof typeof PREFIXES

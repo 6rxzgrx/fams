@@ -33,8 +33,8 @@ import {
 	DropdownMenuTrigger,
 	DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/sections/empty-state';
-import { ListSkeleton } from '@/components/sections/loading-state';
 import { ErrorState } from '@/components/sections/error-state';
 import { TransactionItem } from '@/components/finance/transaction-item';
 import { TransactionForm } from '@/components/finance/transaction-form';
@@ -113,6 +113,39 @@ function dayNet(txs: Transaction[]) {
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
+
+function TxListSkeleton() {
+	const row = (w1: string, w2: string) => (
+		<div className="flex items-center gap-3 px-5 py-3 lg:px-0">
+			<Skeleton className="size-9 shrink-0 rounded-full" />
+			<div className="flex-1 space-y-1.5">
+				<Skeleton className={`h-3.5 rounded ${w1}`} />
+				<Skeleton className={`h-3 rounded ${w2}`} />
+			</div>
+			<Skeleton className="h-4 w-20 rounded" />
+		</div>
+	);
+	return (
+		<div>
+			<div className="px-5 pb-1 pt-3 lg:px-0">
+				<Skeleton className="h-3.5 w-32 rounded" />
+			</div>
+			<div className="divide-y divide-border">
+				{row('w-36', 'w-24')}
+				{row('w-28', 'w-20')}
+				{row('w-40', 'w-16')}
+			</div>
+			<div className="px-5 pb-1 pt-4 lg:px-0">
+				<Skeleton className="h-3.5 w-24 rounded" />
+			</div>
+			<div className="divide-y divide-border">
+				{row('w-32', 'w-20')}
+				{row('w-44', 'w-24')}
+				{row('w-28', 'w-16')}
+			</div>
+		</div>
+	);
+}
 
 export default function TransactionsPage() {
 	const [month, setMonth] = useState(currentYM);
@@ -466,6 +499,12 @@ export default function TransactionsPage() {
 			{/* ══════════════════════════════════════════════════
           SUMMARY CARDS — mobile only
       ══════════════════════════════════════════════════ */}
+			{isLoading && (
+				<div className="grid grid-cols-2 gap-2.5 px-5 pb-3.5 lg:hidden">
+					<Skeleton className="h-[78px] rounded-[18px]" />
+					<Skeleton className="h-[78px] rounded-[18px]" />
+				</div>
+			)}
 			{!isLoading && !error && (
 				<div className="grid grid-cols-2 gap-2.5 px-5 pb-3.5 lg:hidden">
 					<div className="rounded-[18px] border border-border bg-surface p-3.5">
@@ -515,6 +554,12 @@ export default function TransactionsPage() {
 			{/* ══════════════════════════════════════════════════
           KPI STRIP — desktop only
       ══════════════════════════════════════════════════ */}
+			{isLoading && (
+				<div className="mb-5 hidden gap-4 lg:grid lg:grid-cols-2">
+					<Skeleton className="h-[88px] rounded-[18px]" />
+					<Skeleton className="h-[88px] rounded-[18px]" />
+				</div>
+			)}
 			{!isLoading && !error && (
 				<div className="mb-5 hidden grid-cols-2 gap-4 lg:grid">
 					<div className="flex items-center gap-4 rounded-[18px] border border-border bg-surface p-5">
@@ -569,7 +614,7 @@ export default function TransactionsPage() {
 			{/* ══════════════════════════════════════════════════
           LOADING / ERROR / EMPTY
       ══════════════════════════════════════════════════ */}
-			{isLoading && <ListSkeleton count={6} />}
+			{isLoading && <TxListSkeleton />}
 
 			{error && <ErrorState message={error} onRetry={() => mutate()} />}
 

@@ -25,21 +25,22 @@ export async function assetsCommand(ctx: Context) {
   await ctx.replyWithChatAction('typing')
 
   try {
-    const assets = await assetsRepo.findAll()
+    const all = await assetsRepo.findAll()
+    const nonLiquid = all.filter((a) => a.kind === 'non_liquid')
 
-    if (assets.length === 0) {
+    if (nonLiquid.length === 0) {
       return ctx.reply('Belum ada aset yang tercatat.')
     }
 
+    const total = nonLiquid.reduce((sum, a) => sum + (parseFloat(a.current_balance) || 0), 0)
+
     // Group by type
-    const grouped = assets.reduce<Record<string, Asset[]>>((acc, asset) => {
+    const grouped = nonLiquid.reduce<Record<string, Asset[]>>((acc, asset) => {
       const type = asset.type ?? 'other'
       if (!acc[type]) acc[type] = []
       acc[type].push(asset)
       return acc
     }, {})
-
-    const total = assets.reduce((sum, a) => sum + (parseInt(a.value, 10) || 0), 0)
 
     const lines: string[] = ['*Daftar Aset FAMS*\n']
 
@@ -48,7 +49,7 @@ export async function assetsCommand(ctx: Context) {
       const label = TYPE_LABELS[type] ?? type
       lines.push(`${icon} *${label}*`)
       for (const item of items) {
-        const value = formatMoney(parseInt(item.value, 10) || 0)
+        const value = formatMoney(parseFloat(item.current_balance) || 0)
         const note = item.notes ? ` _(${item.notes})_` : ''
         lines.push(`  • ${item.name} — ${value}${note}`)
       }
@@ -57,7 +58,7 @@ export async function assetsCommand(ctx: Context) {
 
     lines.push(`———`)
     lines.push(`*Total: ${formatMoney(total)}*`)
-    lines.push(`_${assets.length} aset tercatat_`)
+    lines.push(`_${nonLiquid.length} aset tercatat_`)
 
     return ctx.reply(lines.join('\n'), { parse_mode: 'Markdown' })
   } catch (err) {

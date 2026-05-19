@@ -35,29 +35,24 @@ import {
 	useUpdateAsset,
 	useDeleteAsset,
 } from '@/hooks/use-assets';
+import { usePriceRates } from '@/hooks/use-price-rates';
+import { convertAssetToIdr } from '@/domain/rates';
 import {
-	ACCOUNT_TYPE_LABELS,
 	ASSET_TYPE_LABELS,
 	ASSET_TYPE_ICONS,
 	ASSET_TYPE_COLORS,
 	ASSET_TYPE_SATUAN,
-	LIQUID_ACCOUNT_TYPES,
-	NON_LIQUID_ASSET_TYPES,
 } from '@/domain/constants';
 import { cn } from '@/lib/utils';
 import type {
-	Account,
 	Asset,
-	CreateAccountInput,
-	CreateAssetInput,
 	CreateTransferInput,
+	PriceRate,
 } from '@/domain/types';
 
 type ActiveTab = 'liquid' | 'nonliquid';
 
-type EditTarget =
-	| { kind: 'account'; item: Account }
-	| { kind: 'asset'; item: Asset };
+type EditTarget = { kind: 'account' | 'asset'; item: Asset };
 
 export function AssetSetupSettings() {
 	const {
@@ -79,6 +74,7 @@ export function AssetSetupSettings() {
 	const { trigger: createAsset, isMutating: creatingAsset } = useCreateAsset();
 	const { trigger: updateAsset, isMutating: updatingAsset } = useUpdateAsset();
 	const { trigger: deleteAsset, isMutating: deletingAsset } = useDeleteAsset();
+	const { rates } = usePriceRates();
 
 	const [activeTab, setActiveTab] = useState<ActiveTab>('liquid');
 	const [addOpen, setAddOpen] = useState(false);
@@ -88,15 +84,13 @@ export function AssetSetupSettings() {
 	const isLoading = accLoading || assetLoading;
 	const error = accError || assetError;
 
-	const liquidAccounts = accounts.filter((a) =>
-		(LIQUID_ACCOUNT_TYPES as readonly string[]).includes(a.type),
-	);
+	const liquidAccounts = accounts;
 	const nonLiquidAssets = assets;
 
 	// Group liquid accounts by type
-	const liquidGroups: Record<string, Account[]> = {};
+	const liquidGroups: Record<string, Asset[]> = {};
 	for (const acc of liquidAccounts) {
-		const label = ACCOUNT_TYPE_LABELS[acc.type] ?? acc.type;
+		const label = ASSET_TYPE_LABELS[acc.type] ?? acc.type;
 		(liquidGroups[label] = liquidGroups[label] || []).push(acc);
 	}
 
@@ -111,9 +105,13 @@ export function AssetSetupSettings() {
 		.filter((a) => a.include_in_saldo !== 'false')
 		.reduce((sum, a) => sum + (parseInt(a.current_balance, 10) || 0), 0);
 
-	const nonLiquidTotal = nonLiquidAssets
-		.filter((a) => (a.satuan || ASSET_TYPE_SATUAN[a.type] || 'rupiah') === 'rupiah')
-		.reduce((sum, a) => sum + (parseFloat(a.value) || 0), 0);
+	const nonLiquidTotal = nonLiquidAssets.reduce((sum, a) => {
+		const val = parseFloat(a.current_balance) || 0;
+		const satuan = a.satuan || ASSET_TYPE_SATUAN[a.type] || 'rupiah';
+		if (satuan === 'rupiah') return sum + val;
+		const idr = a.price_symbol ? convertAssetToIdr(val, a.price_symbol, rates) : null;
+		return idr != null ? sum + idr : sum;
+	}, 0);
 
 	function mutateAll() {
 		mutateAccounts();
@@ -121,66 +119,43 @@ export function AssetSetupSettings() {
 	}
 
 	async function handleAdd(result: UnifiedAssetResult) {
-		if (result.kind === 'account') {
-			const res = await createAcc(result.data as CreateAccountInput);
-			if (!res.ok) {
-				toast.error(res.error);
-				return;
-			}
-			toast.success('Aset ditambahkan');
-		} else {
-			const res = await createAsset(result.data as CreateAssetInput);
-			if (!res.ok) {
-				toast.error(res.error);
-				return;
-			}
-			toast.success('Aset ditambahkan');
+		const isLiquid = result.kind === 'account';
+		const res = isLiquid
+			? await createAcc(result.data)
+			: await createAsset(result.data);
+		if (!res.ok) {
+			toast.error(res.error);
+			return;
 		}
+		toast.success('Aset ditambahkan');
 		setAddOpen(false);
 		mutateAll();
 	}
 
 	async function handleEdit(result: UnifiedAssetResult) {
 		if (!editTarget) return;
-		if (result.kind === 'account' && editTarget.kind === 'account') {
-			const res = await updateAcc({
-				id: editTarget.item.id,
-				data: result.data as CreateAccountInput,
-			});
-			if (!res.ok) {
-				toast.error(res.error);
-				return;
-			}
-			toast.success('Aset diperbarui');
-		} else if (result.kind === 'asset' && editTarget.kind === 'asset') {
-			const res = await updateAsset({
-				id: editTarget.item.id,
-				data: result.data as CreateAssetInput,
-			});
-			if (!res.ok) {
-				toast.error(res.error);
-				return;
-			}
-			toast.success('Aset diperbarui');
+		const isLiquid = editTarget.kind === 'account';
+		const res = isLiquid
+			? await updateAcc({ id: editTarget.item.id, data: result.data })
+			: await updateAsset({ id: editTarget.item.id, data: result.data });
+		if (!res.ok) {
+			toast.error(res.error);
+			return;
 		}
+		toast.success('Aset diperbarui');
 		setEditTarget(null);
 		mutateAll();
 	}
 
 	async function handleDelete() {
 		if (!editTarget) return;
-		if (editTarget.kind === 'account') {
-			const res = await deleteAcc(editTarget.item.id);
-			if (!res.ok) {
-				toast.error(res.error);
-				return;
-			}
-		} else {
-			const res = await deleteAsset(editTarget.item.id);
-			if (!res.ok) {
-				toast.error(res.error);
-				return;
-			}
+		const isLiquid = editTarget.kind === 'account';
+		const res = isLiquid
+			? await deleteAcc(editTarget.item.id)
+			: await deleteAsset(editTarget.item.id);
+		if (!res.ok) {
+			toast.error(res.error);
+			return;
 		}
 		toast.success('Aset dihapus');
 		setEditTarget(null);
@@ -286,6 +261,7 @@ export function AssetSetupSettings() {
 				<NonLiquidTab
 					groups={nonLiquidGroups}
 					total={nonLiquidTotal}
+					rates={rates}
 					onAdd={() => setAddOpen(true)}
 					onSelect={(asset) => setEditTarget({ kind: 'asset', item: asset })}
 				/>
@@ -355,10 +331,10 @@ function LiquidTab({
 	onAdd,
 	onSelect,
 }: {
-	groups: Record<string, Account[]>;
+	groups: Record<string, Asset[]>;
 	total: number;
 	onAdd: () => void;
-	onSelect: (acc: Account) => void;
+	onSelect: (acc: Asset) => void;
 }) {
 	const isEmpty = Object.keys(groups).length === 0;
 	if (isEmpty) {
@@ -424,7 +400,7 @@ function LiquidTab({
 											)}
 										</div>
 										<p className="truncate text-xs text-muted-foreground">
-											{acc.bank_name || ACCOUNT_TYPE_LABELS[acc.type]}
+											{acc.bank_name || ASSET_TYPE_LABELS[acc.type]}
 										</p>
 									</div>
 									<MoneyDisplay
@@ -445,11 +421,13 @@ function LiquidTab({
 function NonLiquidTab({
 	groups,
 	total,
+	rates,
 	onAdd,
 	onSelect,
 }: {
 	groups: Record<string, Asset[]>;
 	total: number;
+	rates: PriceRate[];
 	onAdd: () => void;
 	onSelect: (asset: Asset) => void;
 }) {
@@ -524,8 +502,15 @@ function NonLiquidTab({
 										</p>
 									</div>
 									<QuantityDisplay
-										value={parseFloat(asset.value) || 0}
+										value={parseFloat(asset.current_balance) || 0}
 										satuan={asset.satuan || ASSET_TYPE_SATUAN[asset.type] || 'rupiah'}
+										idrValue={(() => {
+											const satuan = asset.satuan || ASSET_TYPE_SATUAN[asset.type] || 'rupiah';
+											if (satuan === 'rupiah') return null;
+											return asset.price_symbol
+												? convertAssetToIdr(parseFloat(asset.current_balance) || 0, asset.price_symbol, rates)
+												: null;
+										})()}
 									/>
 								</button>
 							);

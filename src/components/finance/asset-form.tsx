@@ -24,8 +24,9 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { MoneyInput } from '@/components/finance/money-input'
+import { usePriceRates } from '@/hooks/use-price-rates'
 import { cn } from '@/lib/utils'
-import type { Account, Asset, CreateAccountInput, CreateAssetInput } from '@/domain/types'
+import type { Asset, CreateAssetInput } from '@/domain/types'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -46,45 +47,31 @@ const UnifiedSchema = z.object({
   category: z.string().min(1, 'Pilih tipe aset'),
   include_in_saldo: z.boolean().default(true),
   notes: z.string().max(500).default(''),
+  price_symbol: z.string().default(''),
 })
 
 type UnifiedValues = z.infer<typeof UnifiedSchema>
 
-export type UnifiedAssetResult =
-  | { kind: 'account'; data: CreateAccountInput }
-  | { kind: 'asset'; data: CreateAssetInput }
+export type UnifiedAssetResult = { kind: 'account' | 'asset'; data: CreateAssetInput }
 
 // ─── Default values from existing record ─────────────────────────────────────
 
-type EditTarget =
-  | { kind: 'account'; item: Partial<Account> }
-  | { kind: 'asset'; item: Partial<Asset> }
+type EditTarget = { kind: 'account' | 'asset'; item: Partial<Asset> }
 
 function toUnifiedDefaults(edit?: EditTarget): Partial<UnifiedValues> {
   if (!edit) return { icon: 'briefcase', color: '#64748b', balance: 0, satuan: 'rupiah', include_in_saldo: true }
-  if (edit.kind === 'account') {
-    const a = edit.item
-    return {
-      icon: a.icon ?? 'briefcase',
-      color: a.color ?? '#1e40af',
-      name: a.name ?? '',
-      balance: a.current_balance ? parseInt(a.current_balance, 10) : 0,
-      satuan: 'rupiah',
-      category: a.type ?? '',
-      include_in_saldo: a.include_in_saldo !== 'false',
-      notes: a.notes ?? '',
-    }
-  }
   const a = edit.item
+  const isLiquidEdit = edit.kind === 'account'
   return {
     icon: a.icon ?? 'briefcase',
-    color: a.color ?? '#64748b',
+    color: a.color ?? (isLiquidEdit ? '#1e40af' : '#64748b'),
     name: a.name ?? '',
-    balance: a.value ? parseFloat(a.value) : 0,
-    satuan: a.satuan || ASSET_TYPE_SATUAN[a.type ?? ''] || 'rupiah',
+    balance: a.current_balance ? parseFloat(a.current_balance) : 0,
+    satuan: isLiquidEdit ? 'rupiah' : (a.satuan || ASSET_TYPE_SATUAN[a.type ?? ''] || 'rupiah'),
     category: a.type ?? '',
-    include_in_saldo: a.include_in_saldo === 'true',
+    include_in_saldo: isLiquidEdit ? a.include_in_saldo !== 'false' : a.include_in_saldo === 'true',
     notes: a.notes ?? '',
+    price_symbol: a.price_symbol ?? '',
   }
 }
 
@@ -131,6 +118,7 @@ export function AssetForm({
       category: defaults.category ?? '',
       include_in_saldo: defaults.include_in_saldo ?? true,
       notes: defaults.notes ?? '',
+      price_symbol: defaults.price_symbol ?? '',
     },
   })
 
@@ -141,46 +129,33 @@ export function AssetForm({
   const includeInSaldo = watch('include_in_saldo')
   const isRupiah = selectedSatuan === 'rupiah'
 
+  const { rates } = usePriceRates()
+
   const categoryLabel = selectedCategory
     ? (ACCOUNT_TYPE_LABELS[selectedCategory] ?? ASSET_TYPE_LABELS[selectedCategory] ?? selectedCategory)
     : 'Pilih tipe aset'
 
   async function onValid(values: UnifiedValues) {
     const cat = values.category as AssetCategory
-    if (isLiquid(cat)) {
-      await onSubmit({
-        kind: 'account',
-        data: {
-          name: values.name,
-          type: cat,
-          current_balance: values.balance,
-          icon: values.icon,
-          color: values.color,
-          include_in_saldo: values.include_in_saldo,
-          notes: values.notes,
-          currency: 'IDR',
-          bank_name: '',
-          account_number: '',
-        },
-      })
-    } else {
-      const satuan = values.satuan
-      await onSubmit({
-        kind: 'asset',
-        data: {
-          name: values.name,
-          type: cat as NonLiquidType,
-          value: values.balance,
-          satuan,
-          icon: values.icon,
-          color: values.color,
-          include_in_saldo: satuan === 'rupiah' ? values.include_in_saldo : false,
-          notes: values.notes,
-          currency: 'IDR',
-          account_id: '',
-        },
-      })
-    }
+    const liquid = isLiquid(cat)
+    await onSubmit({
+      kind: liquid ? 'account' : 'asset',
+      data: {
+        kind: liquid ? 'liquid' : 'non_liquid',
+        name: values.name,
+        type: cat,
+        current_balance: values.balance,
+        satuan: liquid ? 'rupiah' : values.satuan,
+        price_symbol: liquid || values.satuan === 'rupiah' ? '' : values.price_symbol,
+        icon: values.icon,
+        color: values.color,
+        include_in_saldo: values.include_in_saldo,
+        notes: values.notes,
+        currency: 'IDR',
+        bank_name: '',
+        account_number: '',
+      },
+    })
   }
 
   return (
@@ -250,8 +225,8 @@ export function AssetForm({
           {errors.balance && <p className="text-xs text-danger">{errors.balance.message}</p>}
         </div>
 
-        {/* Row 3: tipe aset | include/exclude (only for rupiah) */}
-        <div className={cn('gap-3', isRupiah ? 'grid grid-cols-2' : 'flex')}>
+        {/* Row 3: tipe aset | include/exclude */}
+        <div className={cn('gap-3', selectedCategory ? 'grid grid-cols-2' : 'flex')}>
           <div className="space-y-1.5 flex-1">
             <Label className="text-xs text-muted-foreground">Tipe Aset</Label>
             <button
@@ -282,7 +257,7 @@ export function AssetForm({
             {errors.category && <p className="text-xs text-danger">{errors.category.message}</p>}
           </div>
 
-          {isRupiah && (
+          {selectedCategory && (
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">Hitung ke Saldo</Label>
               <Controller
@@ -315,7 +290,35 @@ export function AssetForm({
           )}
         </div>
 
-        {/* Row 4: catatan */}
+        {/* Row 4: symbol harga (only for non-rupiah) */}
+        {!isRupiah && (
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Symbol Harga (opsional)</Label>
+            <Controller
+              name="price_symbol"
+              control={control}
+              render={({ field }) => (
+                <select
+                  value={field.value}
+                  onChange={field.onChange}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+                >
+                  <option value="">— Tidak ada konverter —</option>
+                  {rates.map((r) => (
+                    <option key={r.symbol} value={r.symbol}>
+                      {r.symbol} — {r.label} (per {r.unit})
+                    </option>
+                  ))}
+                </select>
+              )}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Pilih rate dari Konverter untuk menampilkan nilai dalam Rupiah.
+            </p>
+          </div>
+        )}
+
+        {/* Row 5: catatan */}
         <div className="space-y-1.5">
           <Label className="text-xs text-muted-foreground">Catatan (opsional)</Label>
           <Textarea placeholder="Catatan tambahan..." {...register('notes')} rows={2} />

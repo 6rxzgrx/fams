@@ -23,18 +23,21 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
 
     const existing = await assetsRepo.findById(id)
-    if (!existing) {
+    if (!existing || existing.kind !== 'non_liquid') {
       return NextResponse.json(fail('Aset tidak ditemukan'), { status: 404 })
     }
 
     const patch: Record<string, unknown> = {}
     if (parsed.data.name !== undefined) patch.name = parsed.data.name
     if (parsed.data.type !== undefined) patch.type = parsed.data.type
-    if (parsed.data.value !== undefined) patch.value = String(parsed.data.value)
+    if (parsed.data.current_balance !== undefined) patch.current_balance = String(parsed.data.current_balance)
+    if (parsed.data.satuan !== undefined) patch.satuan = parsed.data.satuan
     if (parsed.data.currency !== undefined) patch.currency = parsed.data.currency
-    if (parsed.data.account_id !== undefined) patch.account_id = parsed.data.account_id
     if (parsed.data.include_in_saldo !== undefined) patch.include_in_saldo = parsed.data.include_in_saldo ? 'true' : 'false'
     if (parsed.data.notes !== undefined) patch.notes = parsed.data.notes
+    if (parsed.data.icon !== undefined) patch.icon = parsed.data.icon
+    if (parsed.data.color !== undefined) patch.color = parsed.data.color
+    if (parsed.data.price_symbol !== undefined) patch.price_symbol = parsed.data.price_symbol
 
     const updated = await assetsRepo.update(id, patch)
 
@@ -67,7 +70,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
 
   try {
     const existing = await assetsRepo.findById(id)
-    if (!existing) {
+    if (!existing || existing.kind !== 'non_liquid') {
       return NextResponse.json(fail('Aset tidak ditemukan'), { status: 404 })
     }
 

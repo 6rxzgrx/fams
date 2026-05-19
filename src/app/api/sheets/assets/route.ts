@@ -16,7 +16,8 @@ export async function GET() {
   }
 
   try {
-    const assets = await assetsRepo.findAll()
+    const all = await assetsRepo.findAll()
+    const assets = all.filter((a) => a.kind === 'non_liquid')
     return NextResponse.json(ok(assets))
   } catch (err) {
     console.error('[assets GET]', err)
@@ -42,7 +43,8 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json()
-    const parsed = CreateAssetSchema.safeParse(body)
+    // Client sends without kind; we enforce kind='non_liquid' server-side
+    const parsed = CreateAssetSchema.omit({ kind: true }).safeParse(body)
     if (!parsed.success) {
       return NextResponse.json(fail(parsed.error.issues[0].message), { status: 400 })
     }
@@ -52,13 +54,19 @@ export async function POST(req: Request) {
 
     const asset = await assetsRepo.create({
       id,
+      kind: 'non_liquid',
       name: parsed.data.name,
       type: parsed.data.type,
-      value: String(parsed.data.value),
       currency: parsed.data.currency,
-      account_id: parsed.data.account_id,
-      include_in_saldo: parsed.data.include_in_saldo ? 'true' : 'false',
+      current_balance: String(parsed.data.current_balance),
+      satuan: parsed.data.satuan,
+      price_symbol: parsed.data.price_symbol,
+      bank_name: '',
+      account_number: '',
+      color: parsed.data.color,
+      icon: parsed.data.icon,
       notes: parsed.data.notes,
+      include_in_saldo: parsed.data.include_in_saldo ? 'true' : 'false',
       created_by: member.id,
       created_at: now,
       updated_at: now,

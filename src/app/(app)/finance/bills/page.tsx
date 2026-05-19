@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { format } from 'date-fns';
 import {
 	AlertTriangle,
+	CalendarDays,
 	CheckCircle2,
 	Clock,
 	FileText,
@@ -13,7 +14,6 @@ import {
 	Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
 	Dialog,
@@ -57,34 +57,36 @@ import {
 import { useCategories } from '@/hooks/use-categories';
 import { formatMoney } from '@/lib/money';
 import { cn } from '@/lib/utils';
-import type {
-	Bill,
-	BillPayment,
-	BillRecurrence,
-	CreateBillInput,
-} from '@/domain/types';
+import type { Bill, BillPayment, CreateBillInput } from '@/domain/types';
 
-// ── Constants ──────────────────────────────────────────────────────────────────
+// ── Helpers ────────────────────────────────────────────────────────────────────
 
-const RECURRENCE_LABELS: Record<BillRecurrence, string> = {
-	none: 'Tidak Berulang',
-	daily: 'Harian',
-	weekly: 'Mingguan',
-	monthly: 'Bulanan',
-	yearly: 'Tahunan',
-};
+const MONTH_NAMES_ID = [
+	'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+	'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+];
+
+function currentYM() {
+	const now = new Date();
+	return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function nextMonthYM(ym: string): string {
+	const [y, m] = ym.split('-').map(Number);
+	// new Date(y, m, 1): m is 1-indexed → this gives month index m (0-indexed) = next month
+	const d = new Date(y, m, 1);
+	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function monthFullLabel(ym: string): string {
+	const [y, m] = ym.split('-').map(Number);
+	return `${MONTH_NAMES_ID[m - 1]} ${y}`;
+}
 
 const BILL_COLORS = [
-	'#6366f1',
-	'#ec4899',
-	'#f59e0b',
-	'#10b981',
-	'#3b82f6',
-	'#8b5cf6',
-	'#ef4444',
-	'#14b8a6',
-	'#f97316',
-	'#84cc16',
+	'#6366f1', '#ec4899', '#f59e0b', '#10b981',
+	'#3b82f6', '#8b5cf6', '#ef4444', '#14b8a6',
+	'#f97316', '#84cc16',
 ];
 
 function getBillColor(name: string): string {
@@ -131,9 +133,15 @@ function formatDueDate(dateStr: string): string {
 	}
 }
 
-function currentYM() {
-	const now = new Date();
-	return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+function formatDueDateShort(dateStr: string): string {
+	try {
+		return new Date(dateStr).toLocaleDateString('id-ID', {
+			day: 'numeric',
+			month: 'short',
+		});
+	} catch {
+		return dateStr;
+	}
 }
 
 // ── Summary Card ───────────────────────────────────────────────────────────────
@@ -193,17 +201,7 @@ function BillRow({
 
 			{/* Info */}
 			<div className="min-w-0 flex-1">
-				<div className="flex items-center gap-2">
-					<p className="truncate font-medium">{bill.name}</p>
-					{bill.recurrence !== 'none' && (
-						<Badge
-							variant="secondary"
-							className="shrink-0 px-1.5 py-0 text-[10px]"
-						>
-							{RECURRENCE_LABELS[bill.recurrence]}
-						</Badge>
-					)}
-				</div>
+				<p className="truncate font-medium">{bill.name}</p>
 				<p className="mt-0.5 text-xs text-muted-foreground">
 					Jatuh tempo {formatDueDate(bill.due_date)}
 				</p>
@@ -300,7 +298,6 @@ function BillGroupSection({
 
 	return (
 		<section>
-			{/* Section header */}
 			<div
 				className="flex items-center justify-between gap-3 px-5 py-2.5"
 				style={{ borderLeft: `3px solid ${cfg.color}` }}
@@ -322,7 +319,6 @@ function BillGroupSection({
 				</p>
 			</div>
 
-			{/* Bill rows */}
 			<div className="divide-y divide-border bg-surface">
 				{bills.map((bill) => (
 					<BillRow
@@ -336,6 +332,93 @@ function BillGroupSection({
 				))}
 			</div>
 		</section>
+	);
+}
+
+// ── Next Month Card ────────────────────────────────────────────────────────────
+
+function NextMonthCard({
+	bills,
+	label,
+	onAdd,
+}: {
+	bills: Bill[];
+	label: string;
+	onAdd: () => void;
+}) {
+	const total = bills.reduce((s, b) => s + parseInt(b.amount, 10), 0);
+
+	return (
+		<div className="overflow-hidden rounded-xl border border-dashed border-border/70 bg-muted/30">
+			{/* Header */}
+			<div className="flex items-center justify-between border-b border-dashed border-border/70 bg-muted/50 px-4 py-3.5">
+				<div className="flex items-center gap-2">
+					<span className="flex size-7 items-center justify-center rounded-md bg-muted">
+						<CalendarDays
+							className="size-3.5 text-muted-foreground"
+							strokeWidth={1.75}
+						/>
+					</span>
+					<div>
+						<p className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
+							Bulan Depan
+						</p>
+						<h3 className="text-[14px] font-semibold tracking-tight opacity-80">
+							{label}
+						</h3>
+					</div>
+				</div>
+				{bills.length > 0 && (
+					<p className="text-[12px] font-bold tabular-nums text-muted-foreground">
+						{formatMoney(total)}
+					</p>
+				)}
+			</div>
+
+			{/* Body */}
+			{bills.length === 0 ? (
+				<div className="flex flex-col items-center px-4 py-8 text-center">
+					<p className="text-sm font-semibold text-muted-foreground">
+						Belum ada tagihan
+					</p>
+					<p className="mt-1 max-w-[180px] text-[12px] text-muted-foreground/70">
+						Belum ada tagihan terdaftar untuk {label}.
+					</p>
+					<Button
+						variant="outline"
+						size="sm"
+						className="mt-3 gap-1.5 border-dashed"
+						onClick={onAdd}
+					>
+						<Plus className="size-3.5" strokeWidth={2.5} />
+						Tambah
+					</Button>
+				</div>
+			) : (
+				<ul className="divide-y divide-border/50">
+					{bills.map((bill) => (
+						<li key={bill.id} className="flex items-center gap-3 px-4 py-3">
+							{/* Colored left dot instead of avatar */}
+							<span
+								className="size-2 shrink-0 rounded-full opacity-70"
+								style={{ backgroundColor: getBillColor(bill.name) }}
+							/>
+							<div className="min-w-0 flex-1">
+								<p className="truncate text-[13px] font-medium opacity-80">
+									{bill.name}
+								</p>
+								<p className="text-[11px] text-muted-foreground">
+									{formatDueDateShort(bill.due_date)}
+								</p>
+							</div>
+							<p className="shrink-0 text-[12.5px] font-semibold tabular-nums text-muted-foreground">
+								{formatMoney(parseInt(bill.amount, 10))}
+							</p>
+						</li>
+					))}
+				</ul>
+			)}
+		</div>
 	);
 }
 
@@ -377,7 +460,7 @@ function BillFormDialog({
 			name: name.trim(),
 			amount,
 			due_date: dueDate,
-			recurrence: 'monthly',
+			recurrence: 'none',
 			account_id: '',
 			category_id: categoryId,
 			notes,
@@ -676,6 +759,9 @@ export default function BillsPage() {
 	const [payBill, setPayBill] = useState<Bill | null>(null);
 	const [deleteBill, setDeleteBill] = useState<Bill | null>(null);
 
+	const nextMonth = nextMonthYM(month);
+	const nextLabel = monthFullLabel(nextMonth);
+
 	const {
 		bills,
 		isLoading: billsLoading,
@@ -714,7 +800,22 @@ export default function BillsPage() {
 		mutateBills();
 	}
 
-	// Group bills by status
+	// Bills for selected month only (filter by due_date month)
+	const filteredBills = useMemo(
+		() => bills.filter((b) => !b.deleted_at && b.due_date.startsWith(month)),
+		[bills, month],
+	);
+
+	// Bills for next month (preview panel)
+	const nextMonthBills = useMemo(
+		() =>
+			bills
+				.filter((b) => !b.deleted_at && b.due_date.startsWith(nextMonth))
+				.sort((a, b) => a.due_date.localeCompare(b.due_date)),
+		[bills, nextMonth],
+	);
+
+	// Group selected-month bills by status
 	const grouped = useMemo(() => {
 		const groups: Record<BillStatus, Bill[]> = {
 			overdue: [],
@@ -722,15 +823,14 @@ export default function BillsPage() {
 			unpaid: [],
 			paid: [],
 		};
-		for (const bill of bills) {
+		for (const bill of filteredBills) {
 			groups[getBillStatus(bill, payments, month)].push(bill);
 		}
 		return groups;
-	}, [bills, payments, month]);
+	}, [filteredBills, payments, month]);
 
-	// Summary stats
+	// Summary stats for selected month
 	const stats = useMemo(() => {
-		const allAmount = bills.reduce((s, b) => s + parseInt(b.amount, 10), 0);
 		const paidAmount = grouped.paid.reduce(
 			(s, b) => s + parseInt(b.amount, 10),
 			0,
@@ -743,8 +843,12 @@ export default function BillsPage() {
 			(s, b) => s + parseInt(b.amount, 10),
 			0,
 		);
+		const allAmount = filteredBills.reduce(
+			(s, b) => s + parseInt(b.amount, 10),
+			0,
+		);
 		return {
-			total: { count: bills.length, amount: allAmount },
+			total: { count: filteredBills.length, amount: allAmount },
 			paid: { count: grouped.paid.length, amount: paidAmount },
 			unpaid: {
 				count: grouped.unpaid.length + grouped['due-soon'].length,
@@ -752,7 +856,7 @@ export default function BillsPage() {
 			},
 			overdue: { count: grouped.overdue.length, amount: overdueAmount },
 		};
-	}, [bills, grouped]);
+	}, [filteredBills, grouped]);
 
 	const hasAnyBills = bills.length > 0;
 
@@ -782,14 +886,9 @@ export default function BillsPage() {
 				</div>
 			</header>
 
-			{/* Mobile add FAB row */}
+			{/* Mobile add button */}
 			<div className="mb-3 flex justify-end px-5 lg:hidden">
-				<Button
-					variant="accent"
-					size="sm"
-					onClick={openAdd}
-					className="gap-1.5"
-				>
+				<Button variant="accent" size="sm" onClick={openAdd} className="gap-1.5">
 					<Plus className="size-4" strokeWidth={2.5} />
 					Tambah Tagihan
 				</Button>
@@ -814,7 +913,7 @@ export default function BillsPage() {
 				<ErrorState message={billsError} onRetry={() => mutateBills()} />
 			)}
 
-			{/* Empty state */}
+			{/* No bills at all: full-page empty state */}
 			{!isLoading && !billsError && !hasAnyBills && (
 				<EmptyState
 					icon={FileText}
@@ -831,65 +930,99 @@ export default function BillsPage() {
 
 			{/* Content */}
 			{!isLoading && !billsError && hasAnyBills && (
-				<div className="space-y-4 px-5 lg:px-0">
-					{/* Summary cards */}
-					<div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-						<SummaryCard
-							label="TOTAL TAGIHAN"
-							count={stats.total.count}
-							amount={stats.total.amount}
-						/>
-						<SummaryCard
-							label="SUDAH LUNAS"
-							count={stats.paid.count}
-							amount={stats.paid.amount}
-							accent="#10b981"
-						/>
-						<SummaryCard
-							label="BELUM BAYAR"
-							count={stats.unpaid.count}
-							amount={stats.unpaid.amount}
-							accent="#6b7280"
-						/>
-						<SummaryCard
-							label="TERLAMBAT"
-							count={stats.overdue.count}
-							amount={stats.overdue.amount}
-							accent="#ef4444"
-						/>
-					</div>
-
-					{/* Bills grouped by status */}
-					<div className="overflow-hidden rounded-xl border border-border bg-surface">
-						{STATUS_ORDER.map((status, idx) => (
-							<div
-								key={status}
-								className={cn(
-									idx > 0 &&
-										grouped[status].length > 0 &&
-										'border-t border-border',
-								)}
-							>
-								<BillGroupSection
-									status={status}
-									bills={grouped[status]}
-									payments={payments}
-									month={month}
-									onEdit={openEdit}
-									onDelete={(b) => setDeleteBill(b)}
-									onPay={(b) => setPayBill(b)}
+				<div className="px-5 lg:px-0">
+					{/* Two-column layout: current (left) + next month (right) */}
+					<div className="gap-5 lg:flex lg:items-start">
+						{/* Left: summary cards + bills list */}
+						<div className="flex-1 space-y-4">
+							{/* Summary cards */}
+							<div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+								<SummaryCard
+									label="TOTAL TAGIHAN"
+									count={stats.total.count}
+									amount={stats.total.amount}
+								/>
+								<SummaryCard
+									label="SUDAH LUNAS"
+									count={stats.paid.count}
+									amount={stats.paid.amount}
+									accent="#10b981"
+								/>
+								<SummaryCard
+									label="BELUM BAYAR"
+									count={stats.unpaid.count}
+									amount={stats.unpaid.amount}
+									accent="#6b7280"
+								/>
+								<SummaryCard
+									label="TERLAMBAT"
+									count={stats.overdue.count}
+									amount={stats.overdue.amount}
+									accent="#ef4444"
 								/>
 							</div>
-						))}
 
-						{/* All bills empty for this month (shouldn't happen if hasAnyBills, but guard) */}
-						{STATUS_ORDER.every((s) => grouped[s].length === 0) && (
-							<div className="flex items-center justify-center py-10">
-								<p className="text-sm text-muted-foreground">
-									Tidak ada tagihan.
-								</p>
+							{/* Bills list for selected month */}
+							<div className="overflow-hidden rounded-xl border border-border bg-surface">
+								{filteredBills.length === 0 ? (
+									<div className="flex flex-col items-center px-4 py-12 text-center">
+										<span className="mb-3 inline-flex size-12 items-center justify-center rounded-full bg-muted">
+											<FileText
+												className="size-6 text-muted-foreground"
+												strokeWidth={1.5}
+											/>
+										</span>
+										<p className="font-semibold">
+											Tidak ada tagihan di {monthFullLabel(month)}
+										</p>
+										<p className="mt-1 max-w-[240px] text-[12.5px] text-muted-foreground">
+											Belum ada tagihan yang jatuh tempo pada bulan ini.
+										</p>
+										<Button
+											variant="outline"
+											size="sm"
+											className="mt-4 gap-1.5"
+											onClick={openAdd}
+										>
+											<Plus className="size-3.5" strokeWidth={2.5} />
+											Tambah Tagihan Bulan Ini
+										</Button>
+									</div>
+								) : (
+									<>
+										{STATUS_ORDER.map((status, idx) => (
+											<div
+												key={status}
+												className={cn(
+													idx > 0 &&
+														grouped[status].length > 0 &&
+														'border-t border-border',
+												)}
+											>
+												<BillGroupSection
+													status={status}
+													bills={grouped[status]}
+													payments={payments}
+													month={month}
+													onEdit={openEdit}
+													onDelete={(b) => setDeleteBill(b)}
+													onPay={(b) => setPayBill(b)}
+												/>
+											</div>
+										))}
+									</>
+								)}
 							</div>
-						)}
+						</div>
+
+						{/* Right: next month preview */}
+						<div className="mt-4 lg:mt-0 lg:w-[280px] lg:shrink-0">
+							<NextMonthCard
+								bills={nextMonthBills}
+								label={nextLabel}
+								onAdd={openAdd}
+							/>
+						</div>
 					</div>
 				</div>
 			)}
