@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState } from '@/components/sections/empty-state';
 import {
 	Dialog,
 	DialogContent,
@@ -35,9 +36,22 @@ import { useTransactions } from '@/hooks/use-transactions';
 import { useCategories } from '@/hooks/use-categories';
 import { formatCategoryLabel } from '@/domain/categories';
 import { sumByType, getMonthRange, spentForType } from '@/domain/transactions';
+import {
+	Area,
+	ComposedChart,
+	CartesianGrid,
+	XAxis,
+	YAxis,
+	Line,
+} from 'recharts';
+import {
+	ChartContainer,
+	ChartTooltip,
+	type ChartConfig,
+} from '@/components/ui/chart';
 import { PageContainer } from '@/components/layout/page-container';
 import { MobileBackButton } from '@/components/nav/mobile-back-button';
-import { formatMoney } from '@/lib/money';
+import { formatMoney, formatMoneyCompact } from '@/lib/money';
 import { cn } from '@/lib/utils';
 import {
 	BUDGET_TYPES,
@@ -266,6 +280,11 @@ function SisaCard({
 }
 
 // ── PenggunaanChart ───────────────────────────────────────────────────────────
+const penggunaanConfig = {
+	actuals: { label: 'Aktual', color: '#FB7185' },
+	plan: { label: 'Rencana', color: 'rgba(255,255,255,0.3)' },
+} satisfies ChartConfig;
+
 function PenggunaanChart({
 	cumulativePoints,
 	totalBudget,
@@ -277,53 +296,24 @@ function PenggunaanChart({
 	daysInMonth: number;
 	dailyAllowance: number;
 }) {
-	const W = 700,
-		H = 240;
-	const padTop = 28,
-		padBot = 36,
-		padL = 52,
-		padR = 20;
-	const innerW = W - padL - padR;
-	const innerH = H - padTop - padBot;
+	const actualsMap = new Map(cumulativePoints.map(([d, v]) => [d, v]));
+	const maxActual = cumulativePoints.length
+		? Math.max(...cumulativePoints.map(([, v]) => v))
+		: 0;
+	const maxVal = Math.max(totalBudget * 1.5, maxActual, 1);
 
-	const maxVal = Math.max(
-		totalBudget * 1.5,
-		...cumulativePoints.map((p) => p[1]),
-		1,
-	);
-	const yToPx = (v: number) => padTop + innerH - (v / maxVal) * innerH;
-	const xToPx = (d: number) =>
-		padL + ((d - 1) / Math.max(daysInMonth - 1, 1)) * innerW;
+	const data = Array.from({ length: daysInMonth }, (_, i) => {
+		const day = i + 1;
+		return {
+			day,
+			plan: totalBudget > 0 ? (totalBudget / daysInMonth) * day : null,
+			actuals: actualsMap.has(day) ? (actualsMap.get(day) ?? null) : null,
+		};
+	});
 
-	const planEnd = [xToPx(daysInMonth), yToPx(totalBudget)];
-	const actualPts = cumulativePoints.map(
-		([d, v]) => [xToPx(d), yToPx(v)] as [number, number],
-	);
-	const linePath = actualPts.length
-		? actualPts
-				.map(
-					(p, i) =>
-						`${i === 0 ? 'M' : 'L'} ${p[0].toFixed(1)} ${p[1].toFixed(1)}`,
-				)
-				.join(' ')
-		: '';
-	const areaPath =
-		linePath && actualPts.length > 1
-			? `${linePath} L ${actualPts.at(-1)![0].toFixed(1)} ${yToPx(0).toFixed(1)} L ${actualPts[0][0].toFixed(1)} ${yToPx(0).toFixed(1)} Z`
-			: '';
-	const lastPt = actualPts.at(-1);
-
-	const yTicks = [0, maxVal * 0.25, maxVal * 0.5, maxVal * 0.75, maxVal];
 	const xTicks = [1, 6, 11, 16, 21, 26, daysInMonth].filter(
-		(v, i, a) => a.indexOf(v) === i,
+		(v, i, a) => a.indexOf(v) === i && v <= daysInMonth,
 	);
-
-	function fmtY(v: number) {
-		if (v === 0) return '0';
-		if (v >= 1e9) return (v / 1e9).toFixed(1).replace('.0', '') + 'M';
-		if (v >= 1e6) return (v / 1e6).toFixed(1).replace(/\.0$/, '') + 'jt';
-		return Math.round(v / 1e3) + 'k';
-	}
 
 	return (
 		<div className="rounded-2xl border border-border bg-surface p-5 flex flex-col">
@@ -347,103 +337,102 @@ function PenggunaanChart({
 				)}
 			</div>
 
-			<div className="flex-1 mt-3 min-h-0">
-				<svg
-					width="100%"
-					viewBox={`0 0 ${W} ${H}`}
-					preserveAspectRatio="xMidYMid meet"
-					style={{ display: 'block' }}
+			<ChartContainer
+				config={penggunaanConfig}
+				className="w-full mt-3"
+				style={{ height: 220 }}
+			>
+				<ComposedChart
+					accessibilityLayer
+					data={data}
+					margin={{ left: 0, right: 8, top: 8, bottom: 0 }}
 				>
+					<CartesianGrid vertical={false} strokeOpacity={0.15} />
+					<XAxis
+						dataKey="day"
+						tickLine={false}
+						axisLine={false}
+						tickMargin={8}
+						tick={{ fontSize: 10 }}
+						ticks={xTicks}
+					/>
+					<YAxis
+						tickLine={false}
+						axisLine={false}
+						tickMargin={4}
+						tick={{ fontSize: 10 }}
+						tickFormatter={(v) => formatMoneyCompact(v)}
+						domain={[0, maxVal]}
+						width={52}
+					/>
+					<ChartTooltip
+						cursor={false}
+						content={({ active, payload, label }) => {
+							if (!active || !payload?.length) return null;
+							return (
+								<div className="rounded-lg border border-border bg-background px-3 py-2 text-xs shadow-xl">
+									<p className="mb-1.5 font-semibold text-foreground">
+										Hari ke-{label}
+									</p>
+									{payload.map((entry, i) =>
+										entry.value !== null ? (
+											<div key={i} className="flex items-center gap-2">
+												<span
+													className="size-2 rounded-full"
+													style={{ backgroundColor: entry.color }}
+												/>
+												<span className="text-muted-foreground">
+													{
+														penggunaanConfig[
+															entry.dataKey as keyof typeof penggunaanConfig
+														]?.label
+													}
+												</span>
+												<span className="ml-auto font-mono font-semibold tabular-nums">
+													{formatMoneyCompact(entry.value as number)}
+												</span>
+											</div>
+										) : null,
+									)}
+								</div>
+							);
+						}}
+					/>
 					<defs>
-						<linearGradient id="pgAreaGrad" x1="0" x2="0" y1="0" y2="1">
-							<stop offset="0%" stopColor="#FB7185" stopOpacity="0.22" />
-							<stop offset="100%" stopColor="#FB7185" stopOpacity="0" />
+						<linearGradient id="pgAreaGrad" x1="0" y1="0" x2="0" y2="1">
+							<stop
+								offset="5%"
+								stopColor="var(--color-actuals)"
+								stopOpacity={0.7}
+							/>
+							<stop
+								offset="95%"
+								stopColor="var(--color-actuals)"
+								stopOpacity={0.03}
+							/>
 						</linearGradient>
 					</defs>
-
-					{yTicks.map((t, i) => (
-						<g key={i}>
-							<line
-								x1={padL}
-								x2={W - padR}
-								y1={yToPx(t)}
-								y2={yToPx(t)}
-								stroke="rgba(255,255,255,0.07)"
-								strokeDasharray={t === 0 ? undefined : '2 4'}
-							/>
-							<text
-								x={padL - 8}
-								y={yToPx(t) + 4}
-								textAnchor="end"
-								fontSize="10.5"
-								fill="rgba(142,142,147,1)"
-								fontFamily="Geist, sans-serif"
-								style={{ fontVariantNumeric: 'tabular-nums' }}
-							>
-								{fmtY(t)}
-							</text>
-						</g>
-					))}
-
-					{totalBudget > 0 && (
-						<>
-							<line
-								x1={xToPx(1)}
-								y1={yToPx(0)}
-								x2={planEnd[0]}
-								y2={planEnd[1]}
-								stroke="rgba(255,255,255,0.25)"
-								strokeWidth="1.5"
-								strokeDasharray="5 5"
-								strokeLinecap="round"
-							/>
-							<circle
-								cx={planEnd[0]}
-								cy={planEnd[1]}
-								r="3"
-								fill="rgba(255,255,255,0.4)"
-							/>
-						</>
-					)}
-
-					{areaPath && <path d={areaPath} fill="url(#pgAreaGrad)" />}
-					{linePath && (
-						<path
-							d={linePath}
-							fill="none"
-							stroke="#FB7185"
-							strokeWidth="2.5"
-							strokeLinecap="round"
-							strokeLinejoin="round"
-						/>
-					)}
-					{lastPt && (
-						<circle
-							cx={lastPt[0]}
-							cy={lastPt[1]}
-							r="5"
-							fill="#FB7185"
-							stroke="rgba(10,10,11,0.8)"
-							strokeWidth="2"
-						/>
-					)}
-
-					{xTicks.map((d, i) => (
-						<text
-							key={i}
-							x={xToPx(d)}
-							y={H - padBot + 22}
-							textAnchor="middle"
-							fontSize="11"
-							fill="rgba(142,142,147,1)"
-							fontFamily="Geist, sans-serif"
-							style={{ fontVariantNumeric: 'tabular-nums' }}
-						>
-							{d}
-						</text>
-					))}
-				</svg>
-			</div>
+					<Area
+						dataKey="actuals"
+						type="monotone"
+						fill="url(#pgAreaGrad)"
+						fillOpacity={0.4}
+						stroke="var(--color-actuals)"
+						strokeWidth={2.5}
+						dot={false}
+						connectNulls={false}
+					/>
+					<Line
+						dataKey="plan"
+						type="linear"
+						stroke="var(--color-plan)"
+						strokeWidth={1.5}
+						strokeDasharray="5 5"
+						dot={false}
+						connectNulls
+					/>
+				</ComposedChart>
+			</ChartContainer>
 
 			<div className="flex items-center gap-4 pt-2 border-t border-border mt-2">
 				<div className="flex items-center gap-1.5 text-[10.5px] text-muted-foreground">
@@ -941,22 +930,17 @@ export default function AnggaranPage() {
 				<div className="space-y-4 px-5 lg:px-0">
 					{/* Empty state */}
 					{!totalBudget && (
-						<div className="flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-border bg-surface p-8 text-center">
-							<Target
-								className="size-8 text-muted-foreground"
-								strokeWidth={1.5}
-							/>
-							<div>
-								<p className="font-semibold">Belum ada anggaran bulan ini</p>
-								<p className="mt-0.5 text-sm text-muted-foreground">
-									Atur total anggaran dan alokasikan per tipe pengeluaran.
-								</p>
-							</div>
-							<Button variant="accent" onClick={openSetup}>
-								<Plus className="size-4" />
-								Buat Anggaran
-							</Button>
-						</div>
+						<EmptyState
+							icon={Target}
+							title="Belum ada anggaran bulan ini"
+							description="Atur total anggaran dan alokasikan per tipe pengeluaran."
+							action={
+								<Button variant="accent" onClick={openSetup}>
+									<Plus className="size-4" />
+									Buat Anggaran
+								</Button>
+							}
+						/>
 					)}
 
 					{/* Hero 2-col grid */}

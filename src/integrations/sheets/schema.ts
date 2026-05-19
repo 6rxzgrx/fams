@@ -19,6 +19,7 @@ export const TABS = {
   ai_extraction_logs: 'ai_extraction_logs',
   attachments: 'attachments',
   _system: '_system',
+  asset_snapshots: 'asset_snapshots',
 } as const
 
 export type TabName = keyof typeof TABS
@@ -41,6 +42,7 @@ export const COLUMNS: Record<TabName, string[]> = {
   ai_extraction_logs: ['id', 'raw_response', 'parsed_data', 'confidence', 'cost_usd', 'created_by', 'created_at'],
   attachments: ['id', 'entity_type', 'entity_id', 'filename', 'mime_type', 'drive_file_id', 'url', 'created_by', 'created_at'],
   _system: ['key', 'value'],
+  asset_snapshots: ['id', 'month', 'liquid_total', 'non_liquid_total', 'snapshot_at'],
 }
 
 export function columnToLetter(col: number): string {

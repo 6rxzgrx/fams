@@ -5,7 +5,6 @@ import Link from 'next/link';
 import {
 	Activity,
 	ArrowUpRight,
-	Briefcase,
 	ChevronRight,
 	Coins,
 	Eye,
@@ -14,6 +13,7 @@ import {
 	List,
 	Plus,
 	Receipt,
+	Target,
 	TrendingDown,
 	TrendingUp,
 	Wallet,
@@ -27,9 +27,7 @@ import { MonthPicker } from '@/components/finance/month-picker';
 import { TransactionItem } from '@/components/finance/transaction-item';
 import { CashflowChart } from '@/components/finance/cashflow-chart';
 import { IncomeExpenseBars } from '@/components/finance/income-expense-bars';
-import { CategoryDonut } from '@/components/finance/category-donut';
 import { CategoryIcon } from '@/components/finance/category-icon';
-import { QuantityDisplay } from '@/components/finance/quantity-display';
 
 import { useAccounts } from '@/hooks/use-accounts';
 import { useAssets } from '@/hooks/use-assets';
@@ -113,7 +111,7 @@ export default function RingkasanPage() {
 		to: monthTo,
 		limit: 1000,
 	});
-	const { transactions: sixMoTx } = useTransactions({
+	const { transactions: sixMoTx, isLoading: sixMoTxLoading } = useTransactions({
 		from: sixFrom,
 		to: monthTo,
 		limit: 2000,
@@ -123,7 +121,7 @@ export default function RingkasanPage() {
 		to: thirtyTo,
 		limit: 1000,
 	});
-	const { transactions: recentTx } = useTransactions({ limit: 8 });
+	const { transactions: recentTx } = useTransactions({ limit: 5 });
 
 	// ── Aggregates ───────────────────────────────────────────────
 	const liquidAccounts = accounts.filter(
@@ -170,56 +168,30 @@ export default function RingkasanPage() {
 
 	// 6-month income/expense bars
 	const monthsTrend = useMemo(() => {
-		const out: { m: string; inc: number; exp: number; key: string }[] = [];
+		const slots: { m: string; key: string }[] = [];
 		for (let i = 5; i >= 0; i--) {
 			const d = new Date(year, mon - 1 - i, 1);
 			const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-			out.push({ m: MONTH_LABEL_ID[d.getMonth()], inc: 0, exp: 0, key });
+			slots.push({ m: MONTH_LABEL_ID[d.getMonth()], key });
 		}
-		const map = new Map(out.map((o) => [o.key, o]));
+		const incMap = new Map<string, number>(slots.map((s) => [s.key, 0]));
+		const expMap = new Map<string, number>(slots.map((s) => [s.key, 0]));
 		for (const tx of sixMoTx) {
 			const key = ymOf(tx.date);
-			const slot = map.get(key);
-			if (!slot) continue;
+			if (!incMap.has(key)) continue;
 			const amt = parseInt(tx.amount, 10) || 0;
-			if (tx.type === 'income' || tx.type === 'refund') slot.inc += amt;
-			else if (tx.type === 'expense') slot.exp += amt;
+			if (tx.type === 'income' || tx.type === 'refund')
+				incMap.set(key, (incMap.get(key) ?? 0) + amt);
+			else if (tx.type === 'expense')
+				expMap.set(key, (expMap.get(key) ?? 0) + amt);
 		}
-		return out;
+		return slots.map((s) => ({
+			m: s.m,
+			inc: incMap.get(s.key) ?? 0,
+			exp: expMap.get(s.key) ?? 0,
+			key: s.key,
+		}));
 	}, [sixMoTx, year, mon]);
-
-	// Category spend rollup (current month, expenses only, by category)
-	const expenseCategories = useMemo(() => {
-		const totals = new Map<string, number>();
-		for (const tx of monthTx) {
-			if (tx.type !== 'expense') continue;
-			const id = tx.category_id || '__other__';
-			totals.set(id, (totals.get(id) ?? 0) + (parseInt(tx.amount, 10) || 0));
-		}
-		type Row = {
-			id: string;
-			label: string;
-			icon: string;
-			color: string;
-			amount: number;
-			pct: number;
-		};
-		const totalExp = monthSums.expense || 1;
-		const rows: Row[] = [];
-		for (const [id, amount] of totals.entries()) {
-			const cat = categories.find((c) => c.id === id);
-			rows.push({
-				id,
-				label: cat?.name ?? 'Lainnya',
-				icon: cat?.icon ?? 'tag',
-				color: cat?.color || '#64748b',
-				amount,
-				pct: Math.round((amount / totalExp) * 100),
-			});
-		}
-		rows.sort((a, b) => b.amount - a.amount);
-		return rows;
-	}, [monthTx, categories, monthSums.expense]);
 
 	// Budget rollup — category-level when set, otherwise type-level fallback
 	const budgetRows = useMemo(() => {
@@ -349,19 +321,15 @@ export default function RingkasanPage() {
 				assetsCount={aliveAssets.length}
 				txCount={monthTx.length}
 				netMonth={netMonth}
+				totalBudget={totalBudget}
+				budgetSpent={totalBudgetSpent}
 			/>
 
-			{/* ─── Cashflow + Bills ─────────────────────────────────── */}
-			<section className="grid gap-4 lg:grid-cols-3 lg:gap-5">
-				<div className="lg:col-span-2">
+			{/* Card grid — 2 independent columns on desktop */}
+			<div className="space-y-4 lg:flex lg:items-start lg:gap-5 lg:space-y-0">
+				{/* Left col (3fr): Arus Kas → Anggaran → Masuk vs Keluar */}
+				<div className="space-y-4 lg:flex-[3] lg:space-y-5">
 					<CashflowCard series={cashflowSeries} netMonth={netMonth} />
-				</div>
-				<BillsCard />
-			</section>
-
-			{/* ─── Budget + Accounts ────────────────────────────────── */}
-			<section className="grid gap-4 lg:grid-cols-3 lg:gap-5">
-				<div className="lg:col-span-2">
 					<BudgetCard
 						rows={budgetRows}
 						totalBudget={totalBudget}
@@ -369,41 +337,23 @@ export default function RingkasanPage() {
 						remaining={budgetRemaining}
 						monthLabel={fullMonthLabel(month)}
 					/>
-				</div>
-				<AccountsCard
-					accounts={liquidAccounts}
-					totalLiquid={totalLiquid}
-					loading={accountsLoading}
-				/>
-			</section>
-
-			{/* ─── Category split + Assets ──────────────────────────── */}
-			<section className="grid gap-4 lg:grid-cols-3 lg:gap-5">
-				<div className="lg:col-span-2">
-					<CategorySplitCard
-						rows={expenseCategories}
-						totalSpent={monthSums.expense}
-						monthLabel={fullMonthLabel(month)}
+					<IncomeExpenseCard
+						months={monthsTrend}
+						netMonth={netMonth}
+						loading={sixMoTxLoading}
 					/>
 				</div>
-				<AssetsCard
-					assets={aliveAssets}
-					total={totalAssetValue}
-					loading={assetsLoading}
-				/>
-			</section>
 
-			{/* ─── Income vs Expense + Recent transactions ──────────── */}
-			<section className="grid gap-4 lg:grid-cols-3 lg:gap-5">
-				<div className="lg:col-span-2">
-					<IncomeExpenseCard months={monthsTrend} netMonth={netMonth} />
+				{/* Right col (2fr): Tagihan → Transaksi Terbaru */}
+				<div className="space-y-4 lg:flex-[2] lg:space-y-5">
+					<BillsCard />
+					<RecentTxCard
+						transactions={recentTx}
+						categories={categories}
+						loading={monthTxLoading}
+					/>
 				</div>
-				<RecentTxCard
-					transactions={recentTx}
-					categories={categories}
-					loading={monthTxLoading}
-				/>
-			</section>
+			</div>
 
 			<AddTransactionDialog open={manualOpen} onOpenChange={setManualOpen} />
 		</PageContainer>
@@ -762,6 +712,8 @@ function SubPagesNav({
 	assetsCount,
 	txCount,
 	netMonth,
+	totalBudget,
+	budgetSpent,
 }: {
 	liquid: number;
 	assets: number;
@@ -769,7 +721,13 @@ function SubPagesNav({
 	assetsCount: number;
 	txCount: number;
 	netMonth: number;
+	totalBudget: number;
+	budgetSpent: number;
 }) {
+	const budgetRemaining = totalBudget - budgetSpent;
+	const budgetPct =
+		totalBudget > 0 ? Math.round((budgetSpent / totalBudget) * 100) : 0;
+
 	const items: SubPage[] = [
 		{
 			href: '/finance/transactions',
@@ -780,7 +738,25 @@ function SubPagesNav({
 			Icon: List,
 		},
 		{
-			href: '/finance/aset',
+			href: '/finance/anggaran',
+			label: 'Anggaran',
+			sub: totalBudget > 0 ? `${budgetPct}% terpakai` : 'Belum diatur',
+			stat:
+				totalBudget > 0
+					? budgetRemaining >= 0
+						? formatMoneyCompact(budgetRemaining)
+						: 'Lewat'
+					: 'Atur',
+			tone:
+				totalBudget === 0
+					? 'neutral'
+					: budgetRemaining >= 0
+						? 'success'
+						: 'warning',
+			Icon: Target,
+		},
+		{
+			href: '/finance/assets',
 			label: 'Aset',
 			sub: `${accountsCount} likuid · ${assetsCount} non-likuid`,
 			stat: formatMoneyCompact(liquid + assets),
@@ -810,14 +786,16 @@ function SubPagesNav({
 			<p className="text-eyebrow mb-2 px-1 text-muted-foreground lg:hidden">
 				Menu Keuangan
 			</p>
-			<div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4 lg:gap-3">
-				{items.map((p) => (
+			{/* Mobile: 2+2+1 grid; Web: 5-column */}
+			<div className="grid grid-cols-2 gap-2.5 lg:grid-cols-5 lg:gap-3">
+				{items.map((p, idx) => (
 					<Link
 						key={p.href}
 						href={p.href}
 						className={cn(
 							'group flex flex-col gap-3 rounded-lg border border-border bg-surface p-3.5 transition-colors',
 							'hover:border-border-strong lg:p-4',
+							idx === 4 && 'col-span-2 lg:col-span-1',
 						)}
 					>
 						<div className="flex items-start justify-between gap-2">
@@ -966,7 +944,7 @@ function CashflowCard({
 					</div>
 				</div>
 			</div>
-			<CashflowChart series={series} height={140} />
+			<CashflowChart series={series} height={140} positive={positive} />
 			<div className="mt-2 flex justify-between text-[10.5px] font-medium text-muted-foreground">
 				<span>30 hari lalu</span>
 				<span>Hari ini</span>
@@ -1166,248 +1144,16 @@ function BudgetCard({
 }
 
 /* ─────────────────────────────────────────────────────────────
-   Accounts card
-   ──────────────────────────────────────────────────────────── */
-function AccountsCard({
-	accounts,
-	totalLiquid,
-	loading,
-}: {
-	accounts: ReturnType<typeof useAccounts>['accounts'];
-	totalLiquid: number;
-	loading: boolean;
-}) {
-	const ACCOUNT_TYPE_LABEL: Record<string, string> = {
-		bank: 'Bank',
-		cash: 'Tunai',
-		ewallet: 'E-Wallet',
-		loan: 'Pinjaman',
-		investment: 'Investasi',
-		prepaid_card: 'Kartu prabayar',
-	};
-	return (
-		<Card>
-			<CardHead
-				eyebrow="Likuid"
-				title="Akun"
-				actionHref="/finance/accounts"
-				actionLabel="Kelola"
-			/>
-			{loading ? (
-				<div className="space-y-3">
-					{[0, 1, 2].map((i) => (
-						<Skeleton key={i} className="h-10 w-full" />
-					))}
-				</div>
-			) : accounts.length === 0 ? (
-				<p className="py-6 text-center text-[12.5px] text-muted-foreground">
-					Belum ada akun.
-				</p>
-			) : (
-				<>
-					<ul className="divide-y divide-border">
-						{accounts.slice(0, 5).map((a) => {
-							const balance = parseInt(a.current_balance, 10) || 0;
-							return (
-								<li key={a.id} className="flex items-center gap-3 py-2.5">
-									<span
-										className="flex size-8 shrink-0 items-center justify-center rounded-md text-foreground"
-										style={{
-											background: `${a.color || '#1e40af'}1f`,
-											color: a.color || '#1e40af',
-										}}
-									>
-										<Wallet className="size-3.5" strokeWidth={2} />
-									</span>
-									<div className="min-w-0 flex-1">
-										<p className="truncate text-[13px] font-semibold">
-											{a.name}
-										</p>
-										<p className="text-[11px] font-medium text-muted-foreground">
-											{ACCOUNT_TYPE_LABEL[a.type] ?? a.type}
-										</p>
-									</div>
-									<p className="shrink-0 text-[13px] font-bold tabular-nums">
-										{formatMoneyCompact(balance)}
-									</p>
-								</li>
-							);
-						})}
-					</ul>
-					<div className="mt-2 flex items-center justify-between border-t border-border pt-3">
-						<p className="text-[11.5px] font-semibold text-muted-foreground">
-							Total likuid
-						</p>
-						<p className="text-[14px] font-bold tabular-nums">
-							{formatMoney(totalLiquid)}
-						</p>
-					</div>
-				</>
-			)}
-		</Card>
-	);
-}
-
-/* ─────────────────────────────────────────────────────────────
-   Category split card
-   ──────────────────────────────────────────────────────────── */
-function CategorySplitCard({
-	rows,
-	totalSpent,
-	monthLabel,
-}: {
-	rows: {
-		id: string;
-		label: string;
-		icon: string;
-		color: string;
-		amount: number;
-		pct: number;
-	}[];
-	totalSpent: number;
-	monthLabel: string;
-}) {
-	const slices = rows.map((r) => ({
-		label: r.label,
-		amount: r.amount,
-		color: r.color,
-	}));
-	const visible = rows.slice(0, 7);
-
-	return (
-		<Card>
-			<CardHead
-				eyebrow={monthLabel}
-				title="Pengeluaran per kategori"
-				actionHref="/finance/transactions"
-				actionLabel="Detail"
-			/>
-			<div className="flex flex-col items-start gap-5 sm:flex-row sm:items-center sm:gap-6">
-				<CategoryDonut
-					slices={slices}
-					size={160}
-					centerLabel="PENGELUARAN"
-					centerValue={formatMoneyCompact(totalSpent)}
-				/>
-				<div className="w-full flex-1 space-y-2">
-					{visible.length === 0 ? (
-						<p className="text-[12.5px] text-muted-foreground">
-							Belum ada pengeluaran bulan ini.
-						</p>
-					) : (
-						visible.map((r) => (
-							<div key={r.id} className="flex items-center gap-3">
-								<span
-									className="size-2.5 shrink-0 rounded-[3px]"
-									style={{ background: r.color }}
-									aria-hidden="true"
-								/>
-								<span className="flex-1 truncate text-[12.5px] font-semibold">
-									{r.label}
-								</span>
-								<span className="shrink-0 text-[11.5px] font-semibold text-muted-foreground tabular-nums">
-									{r.pct}%
-								</span>
-								<span className="shrink-0 text-[12.5px] font-bold tabular-nums">
-									{formatMoneyCompact(r.amount)}
-								</span>
-							</div>
-						))
-					)}
-				</div>
-			</div>
-		</Card>
-	);
-}
-
-/* ─────────────────────────────────────────────────────────────
-   Assets card
-   ──────────────────────────────────────────────────────────── */
-function AssetsCard({
-	assets,
-	total,
-	loading,
-}: {
-	assets: ReturnType<typeof useAssets>['assets'];
-	total: number;
-	loading: boolean;
-}) {
-	const hasNonRupiah = assets.some((a) => (a.satuan ?? 'rupiah') !== 'rupiah');
-	return (
-		<Card>
-			<CardHead
-				eyebrow="Aset tidak likuid"
-				title="Aset"
-				actionHref="/finance/aset"
-				actionLabel="Detail"
-			/>
-			{loading ? (
-				<div className="space-y-3">
-					{[0, 1, 2].map((i) => (
-						<Skeleton key={i} className="h-10 w-full" />
-					))}
-				</div>
-			) : assets.length === 0 ? (
-				<p className="py-6 text-center text-[12.5px] text-muted-foreground">
-					Belum ada aset.
-				</p>
-			) : (
-				<>
-					<ul className="divide-y divide-border">
-						{assets.slice(0, 5).map((a) => {
-							const satuan = a.satuan ?? 'rupiah';
-							const value = parseFloat(a.value) || 0;
-							return (
-								<li key={a.id} className="flex items-center gap-3 py-2.5">
-									<span
-										className="flex size-8 shrink-0 items-center justify-center rounded-md"
-										style={{
-											background: `${a.color || '#64748b'}1f`,
-											color: a.color || '#64748b',
-										}}
-									>
-										<Briefcase className="size-3.5" strokeWidth={2} />
-									</span>
-									<div className="min-w-0 flex-1">
-										<p className="truncate text-[13px] font-semibold">
-											{a.name}
-										</p>
-										<p className="text-[11px] font-medium text-muted-foreground">
-											{a.type}
-										</p>
-									</div>
-									<QuantityDisplay
-										value={value}
-										satuan={satuan}
-										className="shrink-0 text-[13px] font-bold tabular-nums"
-									/>
-								</li>
-							);
-						})}
-					</ul>
-					<div className="mt-2 flex items-center justify-between border-t border-border pt-3">
-						<p className="text-[11.5px] font-semibold text-muted-foreground">
-							{hasNonRupiah ? 'Total aset (IDR)' : 'Total aset'}
-						</p>
-						<p className="text-[14px] font-bold tabular-nums">
-							{formatMoneyCompact(total)}
-						</p>
-					</div>
-				</>
-			)}
-		</Card>
-	);
-}
-
-/* ─────────────────────────────────────────────────────────────
    Income vs Expense bar chart
    ──────────────────────────────────────────────────────────── */
 function IncomeExpenseCard({
 	months,
 	netMonth,
+	loading,
 }: {
 	months: { m: string; inc: number; exp: number }[];
 	netMonth: number;
+	loading?: boolean;
 }) {
 	return (
 		<Card>
@@ -1422,7 +1168,7 @@ function IncomeExpenseCard({
 					<span className="size-2.5 rounded-[3px] bg-success" /> Masuk
 				</span>
 				<span className="inline-flex items-center gap-1.5">
-					<span className="size-2.5 rounded-[3px] bg-foreground" /> Keluar
+					<span className="size-2.5 rounded-[3px] bg-danger" /> Keluar
 				</span>
 				<span className="ml-auto text-muted-foreground">
 					Net bulan ini ·{' '}
@@ -1437,7 +1183,11 @@ function IncomeExpenseCard({
 					</span>
 				</span>
 			</div>
-			<IncomeExpenseBars months={months} height={200} />
+			{loading ? (
+				<Skeleton className="h-[200px] w-full rounded-md" />
+			) : (
+				<IncomeExpenseBars months={months} height={200} />
+			)}
 		</Card>
 	);
 }
@@ -1474,7 +1224,7 @@ function RecentTxCard({
 				</p>
 			) : (
 				<ul className="divide-y divide-border">
-					{transactions.slice(0, 6).map((tx) => (
+					{transactions.slice(0, 5).map((tx) => (
 						<li key={tx.id} className="py-1">
 							<TransactionItem transaction={tx} categories={categories} />
 						</li>

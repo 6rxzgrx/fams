@@ -16,6 +16,7 @@ const PREFIXES = {
   transfer: 'xfer',
   csm: 'csm',
   budget: 'bdg',
+  snapshot: 'snap',
 } as const
 
 type Entity = keyof typeof PREFIXES

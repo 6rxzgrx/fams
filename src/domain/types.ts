@@ -302,6 +302,78 @@ export const CalendarSyncMapSchema = z.object({
 
 export type CalendarSyncMap = z.infer<typeof CalendarSyncMapSchema>
 
+// ─── Asset Snapshot ───────────────────────────────────────────────────────────
+
+export const AssetSnapshotSchema = z.object({
+  id: z.string(),
+  month: z.string(),           // YYYY-MM
+  liquid_total: z.string().default('0'),
+  non_liquid_total: z.string().default('0'),
+  snapshot_at: z.string(),
+})
+
+export type AssetSnapshot = z.infer<typeof AssetSnapshotSchema>
+
+// ─── Bill ─────────────────────────────────────────────────────────────────────
+
+export const BillRecurrenceSchema = z.enum(['none', 'daily', 'weekly', 'monthly', 'yearly'])
+export type BillRecurrence = z.infer<typeof BillRecurrenceSchema>
+
+export const BillSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  amount: z.string().default('0'),
+  due_date: z.string(),
+  account_id: z.string().optional().default(''),
+  category_id: z.string().optional().default(''),
+  recurrence: BillRecurrenceSchema.catch('monthly'),
+  notes: z.string().optional().default(''),
+  created_by: z.string(),
+  created_at: z.string(),
+  updated_at: z.string(),
+  deleted_at: z.string().optional().default(''),
+})
+
+export type Bill = z.infer<typeof BillSchema>
+
+export const CreateBillSchema = z.object({
+  name: z.string().min(1, 'Nama tagihan wajib diisi').max(200),
+  amount: z.number().int().nonnegative('Jumlah tidak boleh negatif'),
+  due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format tanggal tidak valid'),
+  account_id: z.string().default(''),
+  category_id: z.string().default(''),
+  recurrence: BillRecurrenceSchema.default('monthly'),
+  notes: z.string().max(500).default(''),
+})
+
+export type CreateBillInput = z.infer<typeof CreateBillSchema>
+
+export const UpdateBillSchema = CreateBillSchema.partial()
+export type UpdateBillInput = z.infer<typeof UpdateBillSchema>
+
+// ─── Bill Payment ─────────────────────────────────────────────────────────────
+
+export const BillPaymentSchema = z.object({
+  id: z.string(),
+  bill_id: z.string(),
+  transaction_id: z.string().optional().default(''),
+  amount: z.string().default('0'),
+  paid_at: z.string(),
+  notes: z.string().optional().default(''),
+  created_by: z.string(),
+  created_at: z.string(),
+})
+
+export type BillPayment = z.infer<typeof BillPaymentSchema>
+
+export const CreateBillPaymentSchema = z.object({
+  amount: z.number().int().positive('Jumlah harus lebih dari 0'),
+  paid_at: z.string().optional(),
+  notes: z.string().max(500).default(''),
+})
+
+export type CreateBillPaymentInput = z.infer<typeof CreateBillPaymentSchema>
+
 // ─── API Response ─────────────────────────────────────────────────────────────
 
 export type ApiResponse<T> =

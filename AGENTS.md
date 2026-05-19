@@ -1,7 +1,9 @@
 <!-- BEGIN:nextjs-agent-rules -->
+
 # This is NOT the Next.js you know
 
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
+
 <!-- END:nextjs-agent-rules -->
 
 ---
@@ -20,9 +22,8 @@ Routes are grouped by domain. Match these exactly when adding pages.
 /finance/dashboard                 Ringkasan keuangan
 /finance/transactions              Pemasukan / pengeluaran / transfer
 /finance/anggaran                  Anggaran bulanan per kategori
-/finance/aset                      Gabungan akun + aset (entrypoint yang dipakai UI saat ini)
+/finance/assets                     Gabungan akun + aset (entrypoint yang dipakai UI saat ini)
 /finance/accounts                  Bank, kas, e-wallet, pinjaman
-/finance/assets                    Properti, kendaraan, emas, elektronik
 /finance/bills                     Tagihan berulang + riwayat pembayaran
 /finance/reports                   Ringkasan bulanan, arus kas (v1.2)
 /calendar                          Tampilan kalender
@@ -42,6 +43,7 @@ Routes are grouped by domain. Match these exactly when adding pages.
 ```
 
 **Rules:**
+
 - New finance-related pages → `/finance/*`.
 - New calendar/event/reminder pages → `/calendar/*`.
 - Non-finance utility modules → `/other/*`.
@@ -50,12 +52,12 @@ Routes are grouped by domain. Match these exactly when adding pages.
 
 ## Navigation shells
 
-Two distinct shells switch at `lg` (1024px). Wired in [src/app/(app)/layout.tsx](src/app/(app)/layout.tsx).
+Two distinct shells switch at `lg` (1024px). Wired in [src/app/(app)/layout.tsx](<src/app/(app)/layout.tsx>).
 
-| Viewport | Shell | File |
-|----------|-------|------|
-| `≥ lg` | Fixed **left sidebar** with grouped sections | [app-sidebar.tsx](src/components/app-sidebar.tsx) |
-| `< lg` | Floating **5-item bottom pill** with center FAB | [bottom-nav.tsx](src/components/nav/bottom-nav.tsx) |
+| Viewport | Shell                                           | File                                                |
+| -------- | ----------------------------------------------- | --------------------------------------------------- |
+| `≥ lg`   | Fixed **left sidebar** with grouped sections    | [app-sidebar.tsx](src/components/app-sidebar.tsx)   |
+| `< lg`   | Floating **5-item bottom pill** with center FAB | [bottom-nav.tsx](src/components/nav/bottom-nav.tsx) |
 
 The sidebar groups (Beranda → Keuangan → Kalender → Lainnya → Pengaturan) mirror the sitemap exactly. When adding a new route, add the link to the matching group in `app-sidebar.tsx`.
 

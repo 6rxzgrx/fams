@@ -1,70 +1,83 @@
-'use client'
+'use client';
 
-type Props = {
-  series: number[]
-  height?: number
-  className?: string
-}
+import { Area, AreaChart, CartesianGrid, YAxis } from 'recharts';
 
-export function CashflowChart({ series, height = 160, className }: Props) {
-  const w = 800
-  const h = height
-  const padding = 8
+import {
+	ChartContainer,
+	ChartTooltip,
+	type ChartConfig,
+} from '@/components/ui/chart';
+import { formatMoneyCompact } from '@/lib/money';
 
-  if (series.length < 2) {
-    return (
-      <div
-        className={className}
-        style={{ height }}
-        aria-hidden="true"
-      />
-    )
-  }
+const positiveConfig = {
+	net: { label: 'Net Kumulatif', color: 'var(--success)' },
+} satisfies ChartConfig;
 
-  const max = Math.max(...series)
-  const min = Math.min(...series)
-  const range = max - min || 1
+const negativeConfig = {
+	net: { label: 'Net Kumulatif', color: 'var(--danger)' },
+} satisfies ChartConfig;
 
-  const pts = series.map((v, i) => {
-    const x = (i / (series.length - 1)) * w
-    const y = h - padding - ((v - min) / range) * (h - padding * 2)
-    return [x, y] as const
-  })
+export function CashflowChart({
+	series,
+	height = 160,
+	className,
+	positive = true,
+}: {
+	series: number[];
+	height?: number;
+	className?: string;
+	positive?: boolean;
+}) {
+	if (series.length < 2) {
+		return <div className={className} style={{ height }} aria-hidden="true" />;
+	}
 
-  let path = `M ${pts[0][0]} ${pts[0][1]}`
-  for (let i = 1; i < pts.length; i++) {
-    const [x0, y0] = pts[i - 1]
-    const [x1, y1] = pts[i]
-    const cx = (x0 + x1) / 2
-    path += ` C ${cx} ${y0}, ${cx} ${y1}, ${x1} ${y1}`
-  }
-  const area = `${path} L ${w} ${h} L 0 ${h} Z`
-  const gradId = `cf-grad-${height}`
+	const config = positive ? positiveConfig : negativeConfig;
+	const data = series.map((v, i) => ({ day: i + 1, net: v }));
 
-  return (
-    <svg
-      viewBox={`0 0 ${w} ${h}`}
-      preserveAspectRatio="none"
-      className={className}
-      style={{ display: 'block', height, width: '100%' }}
-      role="img"
-      aria-label="Grafik arus kas 30 hari"
-    >
-      <defs>
-        <linearGradient id={gradId} x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor="var(--foreground)" stopOpacity="0.14" />
-          <stop offset="100%" stopColor="var(--foreground)" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <path d={area} fill={`url(#${gradId})`} />
-      <path
-        d={path}
-        fill="none"
-        stroke="var(--foreground)"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
+	return (
+		<div className={className}>
+			<ChartContainer config={config} style={{ height }} className="w-full">
+				<AreaChart
+					accessibilityLayer
+					data={data}
+					margin={{ left: 0, right: 0, top: 4, bottom: 0 }}
+				>
+					<CartesianGrid vertical={false} strokeOpacity={0.4} />
+					<YAxis hide domain={['auto', 'auto']} />
+					<ChartTooltip
+						cursor={false}
+						content={({ active, payload, label }) => {
+							if (!active || !payload?.length) return null;
+							return (
+								<div className="rounded-lg border border-border bg-background px-3 py-2 text-xs shadow-xl">
+									<p className="mb-1 text-muted-foreground">Hari ke-{label}</p>
+									<p
+										className="font-mono font-semibold tabular-nums"
+										style={{ color: 'var(--color-net)' }}
+									>
+										{formatMoneyCompact(payload[0]?.value as number)}
+									</p>
+								</div>
+							);
+						}}
+					/>
+					<defs>
+						<linearGradient id="fillCashflow" x1="0" y1="0" x2="0" y2="1">
+							<stop offset="5%" stopColor="var(--color-net)" stopOpacity={0.8} />
+							<stop offset="95%" stopColor="var(--color-net)" stopOpacity={0.05} />
+						</linearGradient>
+					</defs>
+					<Area
+						dataKey="net"
+						type="natural"
+						fill="url(#fillCashflow)"
+						fillOpacity={0.4}
+						stroke="var(--color-net)"
+						strokeWidth={2}
+					/>
+				</AreaChart>
+			</ChartContainer>
+		</div>
+	);
 }

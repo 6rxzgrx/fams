@@ -1,89 +1,99 @@
-'use client'
+'use client';
 
-type Month = { m: string; inc: number; exp: number }
+import { Bar, BarChart, CartesianGrid, Cell, XAxis } from 'recharts';
 
-type Props = {
-  months: Month[]
-  height?: number
-  className?: string
-}
+import {
+	ChartContainer,
+	ChartTooltip,
+	type ChartConfig,
+} from '@/components/ui/chart';
+import { formatMoneyCompact } from '@/lib/money';
 
-export function IncomeExpenseBars({ months, height = 200, className }: Props) {
-  const w = 600
-  const h = height
-  const padTop = 24
-  const padBot = 28
-  const padX = 16
+const chartConfig = {
+	inc: { label: 'Masuk', color: 'var(--success)' },
+	exp: { label: 'Keluar', color: 'var(--danger)' },
+} satisfies ChartConfig;
 
-  if (!months.length) {
-    return <div className={className} style={{ height }} aria-hidden="true" />
-  }
+type Month = { m: string; inc: number; exp: number };
 
-  const max = Math.max(1, ...months.flatMap((m) => [m.inc, m.exp]))
-  const groupW = (w - padX * 2) / months.length
-  const gap = 4
-  const barW = (groupW - gap * 3) / 2
-  const lastIdx = months.length - 1
+export function IncomeExpenseBars({
+	months,
+	height = 200,
+	className,
+}: {
+	months: Month[];
+	height?: number;
+	className?: string;
+}) {
+	if (!months.length) {
+		return <div className={className} style={{ height }} aria-hidden="true" />;
+	}
 
-  return (
-    <svg
-      viewBox={`0 0 ${w} ${h}`}
-      preserveAspectRatio="none"
-      className={className}
-      style={{ display: 'block', height, width: '100%' }}
-      role="img"
-      aria-label="Pemasukan vs pengeluaran 6 bulan"
-    >
-      {[0.25, 0.5, 0.75, 1].map((t, i) => (
-        <line
-          key={i}
-          x1={padX}
-          x2={w - padX}
-          y1={padTop + (1 - t) * (h - padTop - padBot)}
-          y2={padTop + (1 - t) * (h - padTop - padBot)}
-          stroke="var(--border)"
-          strokeDasharray="2 4"
-        />
-      ))}
-      {months.map((m, i) => {
-        const xStart = padX + i * groupW + gap
-        const incH = (m.inc / max) * (h - padTop - padBot)
-        const expH = (m.exp / max) * (h - padTop - padBot)
-        const isLast = i === lastIdx
-        return (
-          <g key={i}>
-            <rect
-              x={xStart}
-              y={h - padBot - incH}
-              width={barW}
-              height={Math.max(0, incH)}
-              rx={4}
-              fill="var(--success)"
-              opacity={isLast ? 1 : 0.55}
-            />
-            <rect
-              x={xStart + barW + gap}
-              y={h - padBot - expH}
-              width={barW}
-              height={Math.max(0, expH)}
-              rx={4}
-              fill={isLast ? 'var(--foreground)' : 'var(--muted)'}
-              stroke={isLast ? 'none' : 'var(--border-strong)'}
-            />
-            <text
-              x={xStart + barW + gap / 2}
-              y={h - 8}
-              textAnchor="middle"
-              fontSize="11"
-              fontWeight={600}
-              fill={isLast ? 'var(--foreground)' : 'var(--muted-foreground)'}
-              fontFamily="var(--font-sans)"
-            >
-              {m.m}
-            </text>
-          </g>
-        )
-      })}
-    </svg>
-  )
+	const lastIdx = months.length - 1;
+
+	return (
+		<div className={className}>
+			<ChartContainer config={chartConfig} style={{ height }} className="w-full">
+				<BarChart
+					accessibilityLayer
+					data={months}
+					margin={{ left: 0, right: 0, top: 4, bottom: 0 }}
+					barCategoryGap="20%"
+					barGap={4}
+				>
+					<CartesianGrid vertical={false} strokeDasharray="3 3" />
+					<XAxis
+						dataKey="m"
+						tickLine={false}
+						axisLine={false}
+						tickMargin={8}
+						tick={{ fontSize: 11 }}
+					/>
+					<ChartTooltip
+						cursor={false}
+						content={({ active, payload, label }) => {
+							if (!active || !payload?.length) return null;
+							return (
+								<div className="rounded-lg border border-border bg-background px-3 py-2 text-xs shadow-xl">
+									<p className="mb-1.5 font-semibold text-foreground">{label}</p>
+									{payload.map((entry, i) => (
+										<div key={i} className="flex items-center gap-2">
+											<span
+												className="size-2 rounded-full"
+												style={{ backgroundColor: entry.color }}
+											/>
+											<span className="text-muted-foreground">
+												{chartConfig[entry.dataKey as keyof typeof chartConfig]?.label}
+											</span>
+											<span className="ml-auto font-mono font-semibold tabular-nums">
+												{formatMoneyCompact(entry.value as number)}
+											</span>
+										</div>
+									))}
+								</div>
+							);
+						}}
+					/>
+					<Bar dataKey="inc" radius={[4, 4, 0, 0]}>
+						{months.map((_, i) => (
+							<Cell
+								key={i}
+								fill="var(--color-inc)"
+								fillOpacity={i === lastIdx ? 1 : 0.5}
+							/>
+						))}
+					</Bar>
+					<Bar dataKey="exp" radius={[4, 4, 0, 0]}>
+						{months.map((_, i) => (
+							<Cell
+								key={i}
+								fill="var(--color-exp)"
+								fillOpacity={i === lastIdx ? 1 : 0.45}
+							/>
+						))}
+					</Bar>
+				</BarChart>
+			</ChartContainer>
+		</div>
+	);
 }

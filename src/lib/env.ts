@@ -19,6 +19,7 @@ const envSchema = z.object({
 	GEMINI_API_KEY: optStr(),
 	TELEGRAM_BOT_TOKEN: optStr(),
 	TELEGRAM_WEBHOOK_SECRET: optStr(),
+	CRON_SECRET: optStr(),
 	NODE_ENV: z
 		.enum(['development', 'test', 'production'])
 		.default('development'),
@@ -44,6 +45,7 @@ function parseEnv() {
 			GEMINI_API_KEY: '',
 			TELEGRAM_BOT_TOKEN: '',
 			TELEGRAM_WEBHOOK_SECRET: '',
+			CRON_SECRET: '',
 			NODE_ENV: 'development' as const,
 		};
 	}
