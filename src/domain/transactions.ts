@@ -1,5 +1,8 @@
 import type { Transaction, TransactionCategory, TransactionType } from './types'
 
+export type DailyBar = { day: number; income: number; expense: number; transfer: number }
+export type MonthTrend = { label: string; income: number; expense: number; ym: string }
+
 // Returns the signed delta to apply to an account's current_balance.
 // 'transfer' returns 0 — the transfer route handles both sides explicitly.
 // 'adjustment' returns 0 — manual balance edits handle that directly.
@@ -50,6 +53,74 @@ export const TX_TYPE_LABELS: Record<TransactionType, string> = {
   transfer: 'Transfer',
   adjustment: 'Penyesuaian',
   refund: 'Pengembalian',
+}
+
+export function groupByField(
+  transactions: Transaction[],
+  field: 'category_id' | 'account_id',
+  type: TransactionType | null,
+): Record<string, number> {
+  const filtered = type ? transactions.filter((tx) => tx.type === type) : transactions
+  return filtered.reduce<Record<string, number>>((acc, tx) => {
+    const key = (tx[field] as string) || '__unknown__'
+    acc[key] = (acc[key] ?? 0) + (parseInt(tx.amount, 10) || 0)
+    return acc
+  }, {})
+}
+
+export function topN(
+  map: Record<string, number>,
+  n: number,
+): Array<{ id: string; amount: number }> {
+  return Object.entries(map)
+    .map(([id, amount]) => ({ id, amount }))
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, n)
+}
+
+export function getLast12Months(currentYM: string): Array<{
+  year: number
+  month: number
+  label: string
+  ym: string
+}> {
+  const [y, m] = currentYM.split('-').map(Number)
+  const result = []
+  for (let i = 11; i >= 0; i--) {
+    let year = y
+    let month = m - i
+    while (month <= 0) {
+      month += 12
+      year -= 1
+    }
+    const label = new Date(year, month - 1, 1).toLocaleDateString('id-ID', {
+      month: 'short',
+      year: '2-digit',
+    })
+    result.push({ year, month, label, ym: `${year}-${String(month).padStart(2, '0')}` })
+  }
+  return result
+}
+
+export function buildDailyBars(
+  transactions: Transaction[],
+  year: number,
+  month: number,
+): DailyBar[] {
+  const daysInMonth = new Date(year, month, 0).getDate()
+  const map: Record<number, DailyBar> = {}
+  for (const tx of transactions) {
+    const day = parseInt(tx.date.slice(8, 10), 10)
+    if (!map[day]) map[day] = { day, income: 0, expense: 0, transfer: 0 }
+    const amt = parseInt(tx.amount, 10) || 0
+    if (tx.type === 'income' || tx.type === 'refund') map[day].income += amt
+    else if (tx.type === 'expense') map[day].expense += amt
+    else if (tx.type === 'transfer') map[day].transfer += amt
+  }
+  return Array.from({ length: daysInMonth }, (_, i) => {
+    const d = i + 1
+    return map[d] ?? { day: d, income: 0, expense: 0, transfer: 0 }
+  })
 }
 
 // Sums expense spend for a budget type, including child categories whose

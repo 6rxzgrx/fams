@@ -16,8 +16,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorState } from '@/components/sections/error-state'
-import { ListSkeleton } from '@/components/sections/loading-state'
 import { MoneyDisplay } from '@/components/finance/money-display'
 import { usePriceRates } from '@/hooks/use-price-rates'
 import { isRateStale } from '@/domain/rates'
@@ -312,7 +312,35 @@ export default function ConverterPage() {
         </p>
       </div>
 
-      {isLoading && <ListSkeleton count={3} />}
+      {isLoading && (
+        <div className="space-y-3">
+          {/* API rate card */}
+          <div className="rounded-xl border border-border bg-surface p-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-2">
+                <Skeleton className="h-3.5 w-24 rounded" />
+                <Skeleton className="h-6 w-40 rounded" />
+                <Skeleton className="h-3 w-32 rounded" />
+              </div>
+              <Skeleton className="h-6 w-20 rounded-full" />
+            </div>
+          </div>
+          {/* Manual rate rows */}
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="flex items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3">
+              <div className="flex-1 space-y-1.5">
+                <Skeleton className="h-3.5 w-24 rounded" />
+                <Skeleton className="h-3 w-16 rounded" />
+              </div>
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-6 w-32 rounded" />
+                <Skeleton className="size-8 rounded-md" />
+                <Skeleton className="size-8 rounded-md" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
       {error && (
         <ErrorState
           message={error}

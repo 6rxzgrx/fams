@@ -11,8 +11,8 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/components/ui/dialog';
+import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/sections/empty-state';
-import { ListSkeleton } from '@/components/sections/loading-state';
 import { ErrorState } from '@/components/sections/error-state';
 import { MoneyDisplay } from '@/components/finance/money-display';
 import { QuantityDisplay } from '@/components/finance/quantity-display';
@@ -20,7 +20,8 @@ import {
 	AssetForm,
 	type UnifiedAssetResult,
 } from '@/components/finance/asset-form';
-import { TransferForm } from '@/components/finance/transfer-form';
+import { TransferForm } from '@/components/finance/transfer-form'
+import { MoveBalanceForm } from '@/components/finance/move-balance-form';
 import { CategoryIcon } from '@/components/finance/category-icon';
 import {
 	useAccounts,
@@ -28,6 +29,7 @@ import {
 	useUpdateAccount,
 	useDeleteAccount,
 	useCreateTransfer,
+	useMoveBalance,
 } from '@/hooks/use-accounts';
 import {
 	useAssets,
@@ -71,6 +73,7 @@ export function AssetSetupSettings() {
 	const { trigger: updateAcc, isMutating: updatingAcc } = useUpdateAccount();
 	const { trigger: deleteAcc, isMutating: deletingAcc } = useDeleteAccount();
 	const { trigger: transfer, isMutating: transferring } = useCreateTransfer();
+	const { trigger: moveBalance, isMutating: movingBalance } = useMoveBalance();
 	const { trigger: createAsset, isMutating: creatingAsset } = useCreateAsset();
 	const { trigger: updateAsset, isMutating: updatingAsset } = useUpdateAsset();
 	const { trigger: deleteAsset, isMutating: deletingAsset } = useDeleteAsset();
@@ -80,6 +83,7 @@ export function AssetSetupSettings() {
 	const [addOpen, setAddOpen] = useState(false);
 	const [editTarget, setEditTarget] = useState<EditTarget | null>(null);
 	const [transferOpen, setTransferOpen] = useState(false);
+	const [moveOpen, setMoveOpen] = useState(false);
 
 	const isLoading = accLoading || assetLoading;
 	const error = accError || assetError;
@@ -162,6 +166,17 @@ export function AssetSetupSettings() {
 		mutateAll();
 	}
 
+	async function handleMoveBalance(data: { from_id: string; to_id: string; amount: number }) {
+		const res = await moveBalance(data);
+		if (!res.ok) {
+			toast.error(res.error);
+			return;
+		}
+		toast.success('Saldo berhasil dipindahkan');
+		setMoveOpen(false);
+		mutateAll();
+	}
+
 	async function handleTransfer(data: CreateTransferInput) {
 		const res = await transfer(data);
 		if (!res.ok) {
@@ -189,6 +204,17 @@ export function AssetSetupSettings() {
 					</p>
 				</div>
 				<div className="flex items-center gap-2">
+					{liquidAccounts.length >= 2 && (
+						<Button
+							variant="outline"
+							size="pill"
+							onClick={() => setMoveOpen(true)}
+							className="lg:rounded-md lg:px-4"
+						>
+							<ArrowLeftRight className="size-4" strokeWidth={2} />
+							<span className="hidden lg:inline">Pindah Saldo</span>
+						</Button>
+					)}
 					<Button
 						variant="accent"
 						size="pill"
@@ -245,7 +271,26 @@ export function AssetSetupSettings() {
 				))}
 			</div>
 
-			{isLoading && <ListSkeleton count={4} />}
+			{isLoading && (
+				<div className="space-y-2">
+					{/* Group header */}
+					<div className="flex items-center justify-between rounded-xl bg-muted/60 px-4 py-2.5">
+						<Skeleton className="h-3.5 w-16 rounded" />
+						<Skeleton className="h-4 w-24 rounded" />
+					</div>
+					{/* Item rows */}
+					{[0, 1, 2, 3].map((i) => (
+						<div key={i} className="flex items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3.5">
+							<Skeleton className="size-10 shrink-0 rounded-full" />
+							<div className="flex-1 space-y-1.5">
+								<Skeleton className="h-3.5 w-28 rounded" />
+								<Skeleton className="h-3 w-20 rounded" />
+							</div>
+							<Skeleton className="h-4 w-24 rounded" />
+						</div>
+					))}
+				</div>
+			)}
 			{error && <ErrorState message={error} onRetry={mutateAll} />}
 
 			{!isLoading && !error && activeTab === 'liquid' && (
@@ -316,6 +361,21 @@ export function AssetSetupSettings() {
 						onSubmit={handleTransfer}
 						onCancel={() => setTransferOpen(false)}
 						loading={transferring}
+					/>
+				</DialogContent>
+			</Dialog>
+
+			{/* Move balance dialog */}
+			<Dialog open={moveOpen} onOpenChange={setMoveOpen}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Pindah Saldo</DialogTitle>
+					</DialogHeader>
+					<MoveBalanceForm
+						accounts={liquidAccounts}
+						onSubmit={handleMoveBalance}
+						onCancel={() => setMoveOpen(false)}
+						loading={movingBalance}
 					/>
 				</DialogContent>
 			</Dialog>

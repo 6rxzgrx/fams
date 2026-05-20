@@ -42,9 +42,12 @@ export function buildRegistryData(
     .map((a) => {
       const satuan = a.satuan || ASSET_TYPE_SATUAN[a.type] || 'rupiah'
       const numValue = parseFloat(a.current_balance) || 0
+
+      // Prefer persisted value_idr; fall back to runtime conversion for assets not yet re-saved
+      const storedIdr = parseInt(a.value_idr ?? '0', 10) || 0
       const idrValue =
-        satuan !== 'rupiah' && a.price_symbol
-          ? convertAssetToIdr(numValue, a.price_symbol, rates)
+        satuan !== 'rupiah'
+          ? (storedIdr > 0 ? storedIdr : convertAssetToIdr(numValue, a.price_symbol ?? '', rates))
           : null
 
       return {

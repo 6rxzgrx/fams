@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { assetsRepo } from '@/integrations/sheets/repositories/assets'
+import { priceRatesRepo } from '@/integrations/sheets/repositories/price-rates'
 import { CreateAssetSchema, ok, fail } from '@/domain/types'
+import { computeValueIdr } from '@/domain/rates'
 import { canRead, canWrite } from '@/domain/permissions'
 import { generateId } from '@/lib/ulid'
 import { writeAudit } from '@/lib/audit'
@@ -52,6 +54,14 @@ export async function POST(req: Request) {
     const now = new Date().toISOString()
     const id = generateId('asset')
 
+    const rates = await priceRatesRepo.findAll()
+    const value_idr = computeValueIdr(
+      parsed.data.current_balance,
+      parsed.data.satuan,
+      parsed.data.price_symbol,
+      rates,
+    )
+
     const asset = await assetsRepo.create({
       id,
       kind: 'non_liquid',
@@ -71,6 +81,7 @@ export async function POST(req: Request) {
       created_at: now,
       updated_at: now,
       deleted_at: '',
+      value_idr,
     })
 
     await writeAudit({

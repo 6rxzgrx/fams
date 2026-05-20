@@ -74,3 +74,16 @@ export function useDeleteAccount() {
 export function useCreateTransfer() {
   return useSWRMutation('/api/sheets/transactions/transfer', transferFetcher)
 }
+
+async function moveBalanceFetcher(url: string, { arg }: { arg: { from_id: string; to_id: string; amount: number } }) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(arg),
+  })
+  return res.json()
+}
+
+export function useMoveBalance() {
+  return useSWRMutation('/api/sheets/accounts/move', moveBalanceFetcher)
+}

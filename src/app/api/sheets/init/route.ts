@@ -122,6 +122,7 @@ export async function POST(req: Request) {
       created_at: now,
       updated_at: now,
       deleted_at: '',
+      value_idr: '0',
     })
 
     // 7. Seed default categories

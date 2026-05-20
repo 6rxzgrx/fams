@@ -18,6 +18,7 @@ const PREFIXES = {
   budget: 'bdg',
   snapshot: 'snap',
   pr: 'pr',
+  ai_insight: 'ai',
 } as const
 
 type Entity = keyof typeof PREFIXES

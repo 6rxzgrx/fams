@@ -12,9 +12,9 @@ import {
 } from '@/components/ui/dialog';
 import { CategoryForm } from '@/components/finance/category-form';
 import { CategoryIcon } from '@/components/finance/category-icon';
+import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/sections/empty-state';
 import { ErrorState } from '@/components/sections/error-state';
-import { ListSkeleton } from '@/components/sections/loading-state';
 import {
 	useCategories,
 	useCreateCategory,
@@ -144,7 +144,36 @@ export function FinanceCategorySettings() {
 				))}
 			</div>
 
-			{isLoading && <ListSkeleton count={6} />}
+			{isLoading && (
+				<div className="space-y-2">
+					{/* 2 expanded branches */}
+					{[0, 1].map((i) => (
+						<div key={i} className="overflow-hidden rounded-xl border border-border">
+							<div className="flex items-center gap-3 px-4 py-3">
+								<Skeleton className="size-8 shrink-0 rounded-lg" />
+								<Skeleton className="h-4 flex-1 rounded" />
+								<Skeleton className="h-4 w-16 rounded" />
+							</div>
+							{[0, 1].map((j) => (
+								<div key={j} className="flex items-center gap-3 border-t border-border bg-muted/20 px-4 py-2.5">
+									<Skeleton className="ml-8 size-6 shrink-0 rounded-md" />
+									<Skeleton className="h-3.5 flex-1 rounded" />
+								</div>
+							))}
+						</div>
+					))}
+					{/* 3 collapsed branches */}
+					{[0, 1, 2].map((i) => (
+						<div key={i} className="overflow-hidden rounded-xl border border-border">
+							<div className="flex items-center gap-3 px-4 py-3">
+								<Skeleton className="size-8 shrink-0 rounded-lg" />
+								<Skeleton className="h-4 flex-1 rounded" />
+								<Skeleton className="h-4 w-16 rounded" />
+							</div>
+						</div>
+					))}
+				</div>
+			)}
 			{error && <ErrorState message={error} onRetry={() => mutate()} />}
 
 			{!isLoading && !error && branches.length === 0 && (

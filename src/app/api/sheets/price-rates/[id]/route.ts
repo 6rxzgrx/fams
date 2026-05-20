@@ -5,6 +5,7 @@ import { canWrite } from '@/domain/permissions'
 import { writeAudit } from '@/lib/audit'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { getSessionMember } from '@/lib/api-helpers'
+import { syncValueIdrBySymbol } from '@/lib/asset-value-sync'
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { member, error } = await getSessionMember()
@@ -60,6 +61,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       before: existing,
       after: updated,
     })
+
+    // Propagate new rate to all linked non-liquid assets
+    syncValueIdrBySymbol(existing.symbol).catch((e) =>
+      console.error('[price-rates PATCH] syncValueIdr failed', e),
+    )
 
     return NextResponse.json(ok(updated))
   } catch (err) {

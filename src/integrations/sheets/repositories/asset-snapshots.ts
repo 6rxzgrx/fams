@@ -14,7 +14,8 @@ export class AssetSnapshotsRepository extends SheetRepository<AssetSnapshot> {
   async upsert(data: AssetSnapshot): Promise<AssetSnapshot> {
     const existing = await this.findByMonth(data.month)
     if (existing) {
-      return (await this.update(existing.id, data as unknown as Record<string, unknown>)) as AssetSnapshot
+      const patch = { ...data, id: existing.id }
+      return (await this.update(existing.id, patch as unknown as Record<string, unknown>)) as AssetSnapshot
     }
     return this.create(data as unknown as Record<string, unknown>) as Promise<AssetSnapshot>
   }

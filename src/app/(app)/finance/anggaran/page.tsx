@@ -923,12 +923,28 @@ export default function AnggaranPage() {
 			{/* Loading */}
 			{isLoading && (
 				<div className="space-y-3 px-5 lg:px-0">
-					<div className="grid grid-cols-1 lg:grid-cols-[1fr_1.5fr] gap-4">
-						<Skeleton className="h-56 w-full rounded-2xl" />
-						<Skeleton className="h-56 w-full rounded-2xl" />
+					{/* Hero: SisaCard | Chart */}
+					<div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1.5fr]">
+						<Skeleton className="h-64 w-full rounded-2xl" />
+						<Skeleton className="h-64 w-full rounded-2xl" />
 					</div>
-					<Skeleton className="h-40 w-full rounded-2xl" />
-					<Skeleton className="h-40 w-full rounded-2xl" />
+					{/* Section label */}
+					<Skeleton className="h-4 w-28 rounded" />
+					{/* 4 budget-type rows */}
+					{[0, 1, 2, 3].map((i) => (
+						<div key={i} className="overflow-hidden rounded-xl border border-border">
+							<div className="flex items-center justify-between gap-3 px-5 py-4">
+								<div className="flex items-center gap-3">
+									<Skeleton className="size-9 shrink-0 rounded-xl" />
+									<div className="space-y-1.5">
+										<Skeleton className="h-3.5 w-24 rounded" />
+										<Skeleton className="h-3 w-16 rounded" />
+									</div>
+								</div>
+								<Skeleton className="h-4 w-20 rounded" />
+							</div>
+						</div>
+					))}
 				</div>
 			)}
 

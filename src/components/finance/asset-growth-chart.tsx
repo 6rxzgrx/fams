@@ -46,12 +46,14 @@ interface Props {
 	snapshots: AssetSnapshot[];
 	height?: number;
 	className?: string;
+	liveMonth?: string;
 }
 
 export function AssetGrowthChart({
 	snapshots,
 	height = 260,
 	className,
+	liveMonth,
 }: Props) {
 	const isClient = useSyncExternalStore(() => () => {}, () => true, () => false);
 
@@ -60,7 +62,7 @@ export function AssetGrowthChart({
 	}
 
 	const data = snapshots.map((s) => ({
-		month: monthLabel(s.month),
+		month: s.month === liveMonth ? monthLabel(s.month) + '*' : monthLabel(s.month),
 		liquid: parseInt(s.liquid_total, 10) || 0,
 		nonLiquid: parseInt(s.non_liquid_total, 10) || 0,
 	}));

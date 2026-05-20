@@ -60,6 +60,7 @@ export const AssetSchema = z.object({
   created_at: z.string(),
   updated_at: z.string(),
   deleted_at: z.string().optional().default(''),
+  value_idr: z.string().optional().default('0'),
 })
 
 export type Asset = z.infer<typeof AssetSchema>

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { assetsRepo } from '@/integrations/sheets/repositories/assets'
+import { priceRatesRepo } from '@/integrations/sheets/repositories/price-rates'
 import { UpdateAssetSchema, ok, fail } from '@/domain/types'
+import { computeValueIdr } from '@/domain/rates'
 import { canWrite } from '@/domain/permissions'
 import { writeAudit } from '@/lib/audit'
 import { getSessionMember } from '@/lib/api-helpers'
@@ -38,6 +40,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (parsed.data.icon !== undefined) patch.icon = parsed.data.icon
     if (parsed.data.color !== undefined) patch.color = parsed.data.color
     if (parsed.data.price_symbol !== undefined) patch.price_symbol = parsed.data.price_symbol
+
+    // Recompute value_idr whenever balance, satuan, or price_symbol may have changed
+    const effectiveBalance = parsed.data.current_balance ?? (parseFloat(existing.current_balance) || 0)
+    const effectiveSatuan = (parsed.data.satuan ?? existing.satuan) || 'rupiah'
+    const effectiveSymbol = (parsed.data.price_symbol ?? existing.price_symbol) || ''
+    const rates = await priceRatesRepo.findAll()
+    patch.value_idr = computeValueIdr(
+      typeof effectiveBalance === 'number' ? effectiveBalance : parseFloat(String(effectiveBalance)) || 0,
+      effectiveSatuan,
+      effectiveSymbol,
+      rates,
+    )
 
     const updated = await assetsRepo.update(id, patch)
 

@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { toast } from 'sonner';
+import { useMemo, useState } from 'react';
 import {
 	ArrowLeftRight,
 	Briefcase,
@@ -11,6 +12,8 @@ import {
 	Eye,
 	EyeOff,
 	FileText,
+	Loader2,
+	RefreshCw,
 	TrendingDown,
 	TrendingUp,
 } from 'lucide-react';
@@ -22,9 +25,9 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/components/ui/dialog';
+import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/sections/empty-state';
 import { ErrorState } from '@/components/sections/error-state';
-import { ListSkeleton } from '@/components/sections/loading-state';
 import { MoneyDisplay } from '@/components/finance/money-display';
 import { QuantityDisplay } from '@/components/finance/quantity-display';
 import { TransactionItem } from '@/components/finance/transaction-item';
@@ -42,7 +45,7 @@ import { MobileBackButton } from '@/components/nav/mobile-back-button';
 import { PageContainer } from '@/components/layout/page-container';
 import { useAccounts } from '@/hooks/use-accounts';
 import { useAssets } from '@/hooks/use-assets';
-import { useAssetSnapshots } from '@/hooks/use-asset-snapshots';
+import { useAssetSnapshots, useTakeSnapshot } from '@/hooks/use-asset-snapshots';
 import { useCategories } from '@/hooks/use-categories';
 import { usePriceRates } from '@/hooks/use-price-rates';
 import { useTransactions } from '@/hooks/use-transactions';
@@ -69,6 +72,44 @@ function monthLabel(ym: string) {
 	return labels[m - 1] ?? ym;
 }
 
+function AsetPageSkeleton() {
+	const itemRow = () => (
+		<div className="flex items-center gap-3 border-t border-border px-4 py-3">
+			<Skeleton className="size-10 shrink-0 rounded-xl" />
+			<div className="flex-1 space-y-1.5">
+				<Skeleton className="h-3.5 w-28 rounded" />
+				<Skeleton className="h-3 w-20 rounded" />
+			</div>
+			<Skeleton className="h-4 w-24 rounded" />
+		</div>
+	);
+	return (
+		<div className="space-y-2 px-5 lg:space-y-4 lg:px-0">
+			{/* Top grid: 2 summary cards + growth chart */}
+			<div className="grid grid-cols-1 gap-2 lg:grid-cols-[420px_1fr] lg:gap-4">
+				<div className="flex flex-col gap-2">
+					<Skeleton className="h-[90px] w-full rounded-xl" />
+					<Skeleton className="h-[90px] w-full rounded-xl" />
+				</div>
+				<Skeleton className="h-[188px] w-full rounded-xl" />
+			</div>
+			{/* Liquid group */}
+			<div className="overflow-hidden rounded-xl border border-border">
+				<Skeleton className="h-12 w-full rounded-none" />
+				{itemRow()}
+				{itemRow()}
+				{itemRow()}
+			</div>
+			{/* Non-liquid group */}
+			<div className="overflow-hidden rounded-xl border border-border">
+				<Skeleton className="h-12 w-full rounded-none" />
+				{itemRow()}
+				{itemRow()}
+			</div>
+		</div>
+	);
+}
+
 export default function AsetPage() {
 	const {
 		accounts,
@@ -83,7 +124,8 @@ export default function AsetPage() {
 		mutate: mutateAssets,
 	} = useAssets();
 	const { categories } = useCategories();
-	const { snapshots } = useAssetSnapshots(6);
+	const { snapshots, mutate: mutateSnapshots } = useAssetSnapshots(6);
+	const { trigger: triggerSnapshot, isMutating: isSnapshotting } = useTakeSnapshot();
 	const { rates } = usePriceRates();
 	const [detail, setDetail] = useState<RegistryItem | null>(null);
 	const [hideValues, setHideValues] = useState(false);
@@ -107,7 +149,42 @@ export default function AsetPage() {
 		return s;
 	}, 0);
 
-	const { growthPct, avgMonthly, currentMonth } = computeGrowthStats(snapshots);
+	const nowYM = useMemo(() => {
+		const d = new Date()
+		return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+	}, [])
+
+	// Include current month as a live point if no snapshot exists for it yet
+	const displaySnapshots = useMemo(() => {
+		const hasCurrentMonth = snapshots.some((s) => s.month === nowYM)
+		if (hasCurrentMonth) return snapshots.slice(-6)
+		const livePoint = {
+			id: 'live',
+			month: nowYM,
+			liquid_total: String(liquidTotal),
+			non_liquid_total: String(nonLiquidTotal),
+			snapshot_at: new Date().toISOString(),
+		}
+		return [...snapshots.slice(-5), livePoint]
+	}, [snapshots, nowYM, liquidTotal, nonLiquidTotal])
+
+	const isLiveMonth = !snapshots.some((s) => s.month === nowYM)
+
+	async function handleTakeSnapshot() {
+		try {
+			const result = await triggerSnapshot({})
+			if (result?.ok) {
+				toast.success('Snapshot berhasil disimpan')
+			} else {
+				toast.error(result?.error ?? 'Gagal menyimpan snapshot')
+			}
+		} catch {
+			toast.error('Gagal menyimpan snapshot')
+		}
+		await mutateSnapshots()
+	}
+
+	const { growthPct, avgMonthly, currentMonth } = computeGrowthStats(displaySnapshots);
 
 	function handleRetry() {
 		mutateAccounts();
@@ -149,7 +226,7 @@ export default function AsetPage() {
 				</div>
 			</header>
 
-			{isLoading && <ListSkeleton count={5} />}
+			{isLoading && <AsetPageSkeleton />}
 			{error && <ErrorState message={error} onRetry={handleRetry} />}
 
 			{!isLoading && !error && !hasItems && (
@@ -311,23 +388,37 @@ export default function AsetPage() {
 										Komposisi Aset – Tren 6 Bulan
 									</p>
 								</div>
-								<div className="flex items-center gap-3 shrink-0">
+								<div className="flex items-center gap-2 shrink-0">
 									<LegendDot color="#3b82f6" label="Likuid" />
 									<LegendDot color="#eab308" label="Non Likuid" />
+									<button
+										type="button"
+										onClick={handleTakeSnapshot}
+										disabled={isSnapshotting}
+										className="ml-1 flex items-center gap-1 rounded-lg border border-border bg-muted/40 px-2.5 py-1 text-[11px] font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
+										title="Simpan snapshot bulan ini"
+									>
+										{isSnapshotting ? (
+											<Loader2 className="size-3 animate-spin" />
+										) : (
+											<RefreshCw className="size-3" />
+										)}
+										Update
+									</button>
 								</div>
 							</div>
 
-							{snapshots.length === 0 ? (
+							{displaySnapshots.length === 0 ? (
 								<div className="flex h-40 items-center justify-center">
 									<p className="text-[12px] text-muted-foreground">
-										Belum ada data — snapshot pertama akan dibuat otomatis bulan
-										depan.
+										Klik Update untuk menyimpan snapshot pertama.
 									</p>
 								</div>
 							) : (
 								<>
 									<AssetGrowthChart
-										snapshots={snapshots}
+										snapshots={displaySnapshots}
+										liveMonth={isLiveMonth ? nowYM : undefined}
 										height={260}
 										className="mt-2"
 									/>
@@ -712,7 +803,18 @@ function AsetDetailDialog({
 						className="rounded-xl border border-border bg-surface py-8"
 					/>
 				) : isLoading ? (
-					<ListSkeleton count={3} />
+					<div className="divide-y divide-border">
+						{[0, 1, 2].map((i) => (
+							<div key={i} className="flex items-center gap-3 px-4 py-3">
+								<Skeleton className="size-9 shrink-0 rounded-full" />
+								<div className="flex-1 space-y-1.5">
+									<Skeleton className="h-3.5 w-32 rounded" />
+									<Skeleton className="h-3 w-20 rounded" />
+								</div>
+								<Skeleton className="h-4 w-16 rounded" />
+							</div>
+						))}
+					</div>
 				) : error ? (
 					<ErrorState message={error} />
 				) : transactions.length === 0 ? (

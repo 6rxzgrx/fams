@@ -20,13 +20,14 @@ export const TABS = {
   _system: '_system',
   asset_snapshots: 'asset_snapshots',
   price_rates: 'price_rates',
+  ai_insights: 'ai_insights',
 } as const
 
 export type TabName = keyof typeof TABS
 
 export const COLUMNS: Record<TabName, string[]> = {
   family_members: ['id', 'email', 'name', 'role', 'avatar_url', 'module_access', 'created_at', 'updated_at', 'deleted_at'],
-  assets: ['id', 'kind', 'name', 'type', 'currency', 'current_balance', 'satuan', 'price_symbol', 'bank_name', 'account_number', 'color', 'icon', 'notes', 'include_in_saldo', 'created_by', 'created_at', 'updated_at', 'deleted_at'],
+  assets: ['id', 'kind', 'name', 'type', 'currency', 'current_balance', 'satuan', 'price_symbol', 'bank_name', 'account_number', 'color', 'icon', 'notes', 'include_in_saldo', 'created_by', 'created_at', 'updated_at', 'deleted_at', 'value_idr'],
   transactions: ['id', 'account_id', 'category_id', 'type', 'amount', 'description', 'date', 'reference_no', 'notes', 'created_by', 'created_at', 'updated_at', 'deleted_at'],
   transaction_categories: ['id', 'name', 'type', 'icon', 'color', 'parent_id', 'budget_type', 'is_system', 'created_at', 'updated_at', 'deleted_at'],
   bills: ['id', 'name', 'amount', 'due_date', 'account_id', 'category_id', 'recurrence', 'notes', 'created_by', 'created_at', 'updated_at', 'deleted_at'],
@@ -43,6 +44,7 @@ export const COLUMNS: Record<TabName, string[]> = {
   _system: ['key', 'value'],
   asset_snapshots: ['id', 'month', 'liquid_total', 'non_liquid_total', 'snapshot_at'],
   price_rates: ['id', 'symbol', 'label', 'source', 'value_idr_per_unit', 'unit', 'raw_api_data', 'updated_at'],
+  ai_insights: ['id', 'month', 'insight', 'model', 'generated_by', 'generated_at'],
 }
 
 export function columnToLetter(col: number): string {

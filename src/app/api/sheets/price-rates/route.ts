@@ -8,6 +8,7 @@ import { writeAudit } from '@/lib/audit'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { getSessionMember } from '@/lib/api-helpers'
 import { env } from '@/lib/env'
+import { syncValueIdrBySymbol } from '@/lib/asset-value-sync'
 
 const GOLD_API_URL = 'https://api.gold-api.com/price/XAU/USD'
 
@@ -96,6 +97,9 @@ async function refreshApiRates(): Promise<void> {
       updated_at: now,
     })
   }
+
+  // Propagate updated XAU rate to all linked non-liquid assets
+  await syncValueIdrBySymbol('XAU')
 }
 
 export async function GET() {
