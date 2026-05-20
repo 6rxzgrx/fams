@@ -60,7 +60,7 @@ export async function POST(req: Request) {
       .reduce((s, a) => s + (parseInt(a.value_idr ?? '0', 10) || 0), 0)
 
     const snapshot = await assetSnapshotsRepo.upsert({
-      id: generateId('snap'),
+      id: generateId('snapshot'),
       month,
       liquid_total: String(liquidTotal),
       non_liquid_total: String(nonLiquidTotal),
