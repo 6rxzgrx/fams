@@ -126,8 +126,8 @@ export function FinanceCategorySettings() {
 				</Button>
 			</header>
 
-			<div className="grid grid-cols-3 gap-2 rounded-xl bg-muted/60 p-1">
-				{(['expense', 'income', 'transfer'] as CategoryType[]).map((type) => (
+			<div className="grid grid-cols-2 gap-2 rounded-xl bg-muted/60 p-1">
+				{(['expense', 'income'] as CategoryType[]).map((type) => (
 					<button
 						key={type}
 						type="button"
@@ -148,14 +148,20 @@ export function FinanceCategorySettings() {
 				<div className="space-y-2">
 					{/* 2 expanded branches */}
 					{[0, 1].map((i) => (
-						<div key={i} className="overflow-hidden rounded-xl border border-border">
+						<div
+							key={i}
+							className="overflow-hidden rounded-xl border border-border"
+						>
 							<div className="flex items-center gap-3 px-4 py-3">
 								<Skeleton className="size-8 shrink-0 rounded-lg" />
 								<Skeleton className="h-4 flex-1 rounded" />
 								<Skeleton className="h-4 w-16 rounded" />
 							</div>
 							{[0, 1].map((j) => (
-								<div key={j} className="flex items-center gap-3 border-t border-border bg-muted/20 px-4 py-2.5">
+								<div
+									key={j}
+									className="flex items-center gap-3 border-t border-border bg-muted/20 px-4 py-2.5"
+								>
 									<Skeleton className="ml-8 size-6 shrink-0 rounded-md" />
 									<Skeleton className="h-3.5 flex-1 rounded" />
 								</div>
@@ -164,7 +170,10 @@ export function FinanceCategorySettings() {
 					))}
 					{/* 3 collapsed branches */}
 					{[0, 1, 2].map((i) => (
-						<div key={i} className="overflow-hidden rounded-xl border border-border">
+						<div
+							key={i}
+							className="overflow-hidden rounded-xl border border-border"
+						>
 							<div className="flex items-center gap-3 px-4 py-3">
 								<Skeleton className="size-8 shrink-0 rounded-lg" />
 								<Skeleton className="h-4 flex-1 rounded" />
@@ -304,7 +313,7 @@ export function FinanceCategorySettings() {
 
 									{/* Right: + Anak + Edit */}
 									<div className="flex shrink-0 items-center gap-1">
-										{hasChildren && activeType !== 'transfer' && (
+										{hasChildren && (
 											<button
 												type="button"
 												onClick={() =>
