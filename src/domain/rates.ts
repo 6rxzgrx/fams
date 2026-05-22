@@ -33,8 +33,9 @@ export function convertAssetToIdr(
 
 /**
  * Computes the IDR value of a non-liquid asset and returns it as a string integer.
- * For rupiah-denominated assets the balance is already IDR.
- * Returns '0' when conversion is not possible (missing rates).
+ * - Rupiah-denominated assets: balance is already IDR → return as-is.
+ * - Non-rupiah WITH converter: convert and return IDR string.
+ * - Non-rupiah WITHOUT converter: return '' (unknown IDR value — do NOT store raw quantity).
  */
 export function computeValueIdr(
   balance: number,
@@ -42,9 +43,10 @@ export function computeValueIdr(
   priceSymbol: string,
   rates: PriceRate[],
 ): string {
-  if (!satuan || satuan === 'rupiah' || !priceSymbol) return String(Math.round(balance))
+  if (!satuan || satuan === 'rupiah') return String(Math.round(balance))
+  if (!priceSymbol) return ''
   const idr = convertAssetToIdr(balance, priceSymbol, rates)
-  return idr != null ? String(Math.round(idr)) : '0'
+  return idr != null ? String(Math.round(idr)) : ''
 }
 
 export function isRateStale(updatedAt: string, maxAgeMs = 60 * 60 * 1000): boolean {

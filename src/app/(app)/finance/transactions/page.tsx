@@ -60,13 +60,12 @@ import { MobileBackButton } from '@/components/nav/mobile-back-button';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type TypeFilter = 'all' | 'income' | 'expense' | 'transfer';
+type TypeFilter = 'all' | 'income' | 'expense';
 
 const TYPE_TABS: { id: TypeFilter; label: string }[] = [
 	{ id: 'all', label: 'Semua' },
 	{ id: 'income', label: 'Pemasukan' },
 	{ id: 'expense', label: 'Pengeluaran' },
-	{ id: 'transfer', label: 'Transfer' },
 ];
 
 const TYPE_PILL: Record<string, { label: string; cls: string }> = {
@@ -194,8 +193,6 @@ export default function TransactionsPage() {
 			return base.filter((t) => t.type === 'income' || t.type === 'refund');
 		if (typeFilter === 'expense')
 			return base.filter((t) => t.type === 'expense');
-		if (typeFilter === 'transfer')
-			return base.filter((t) => t.type === 'transfer');
 		return base;
 	}, [base, typeFilter]);
 
@@ -223,7 +220,6 @@ export default function TransactionsPage() {
 			income: base.filter((t) => t.type === 'income' || t.type === 'refund')
 				.length,
 			expense: base.filter((t) => t.type === 'expense').length,
-			transfer: base.filter((t) => t.type === 'transfer').length,
 		}),
 		[base],
 	);

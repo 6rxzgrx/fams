@@ -21,7 +21,6 @@ import { formatMoneyCompact } from '@/lib/money'
 const chartConfig = {
   income: { label: 'Pemasukan', color: 'var(--success)' },
   expense: { label: 'Pengeluaran', color: 'var(--danger)' },
-  transfer: { label: 'Transfer', color: '#60a5fa' },
 } satisfies ChartConfig
 
 export function ReportBarChart({
@@ -161,7 +160,6 @@ export function ReportBarChart({
             />
             <Bar dataKey="income" fill="var(--color-income)" radius={[3, 3, 0, 0]} maxBarSize={14} />
             <Bar dataKey="expense" fill="var(--color-expense)" radius={[3, 3, 0, 0]} maxBarSize={14} />
-            <Bar dataKey="transfer" fill="var(--color-transfer)" radius={[3, 3, 0, 0]} maxBarSize={14} />
           </BarChart>
         </ChartContainer>
       ) : (

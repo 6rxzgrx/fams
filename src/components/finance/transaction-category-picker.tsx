@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input'
 import { CategoryIcon } from '@/components/finance/category-icon'
 import { cn } from '@/lib/utils'
 
-const ALL_CATEGORY_TYPES: CategoryType[] = ['expense', 'income', 'transfer']
+const ALL_CATEGORY_TYPES: CategoryType[] = ['expense', 'income']
 
 interface TransactionCategoryPickerProps {
   categories: TransactionCategory[]

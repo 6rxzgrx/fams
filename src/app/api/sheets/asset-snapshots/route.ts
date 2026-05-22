@@ -54,10 +54,16 @@ export async function POST(req: Request) {
     const liquidTotal = active
       .filter((a) => a.kind === 'liquid')
       .reduce((s, a) => s + (parseInt(a.current_balance, 10) || 0), 0)
-    // Non-liquid uses value_idr (pre-computed IDR from converter); avoids incorrect raw-unit summation
+    // Non-liquid: rupiah units use current_balance directly;
+    // non-rupiah units require a converter — use value_idr, skip if no converter assigned.
     const nonLiquidTotal = active
       .filter((a) => a.kind === 'non_liquid')
-      .reduce((s, a) => s + (parseInt(a.value_idr ?? '0', 10) || 0), 0)
+      .reduce((s, a) => {
+        const satuan = a.satuan || 'rupiah'
+        if (!satuan || satuan === 'rupiah') return s + (parseInt(a.current_balance, 10) || 0)
+        if (!a.price_symbol) return s
+        return s + (parseInt(a.value_idr ?? '0', 10) || 0)
+      }, 0)
 
     const snapshot = await assetSnapshotsRepo.upsert({
       id: generateId('snapshot'),

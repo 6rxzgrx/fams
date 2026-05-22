@@ -69,9 +69,6 @@ export const DEFAULT_CATEGORIES: DefaultCategory[] = [
   { key: 'income-penjualan', name: 'Penjualan', type: 'income', icon: 'shopping-bag', color: '#8b5cf6' },
   { key: 'income-pinjaman', name: 'Pinjaman', type: 'income', icon: 'wallet', color: '#fb7185' },
 
-  { key: 'transfer-transfer', name: 'Transfer', type: 'transfer', icon: 'arrow-left-right', color: '#94a3b8' },
-  { key: 'transfer-topup', name: 'Top UP', type: 'transfer', icon: 'arrow-left-right', color: '#94a3b8' },
-  { key: 'transfer-cashout', name: 'Tarik Tunai', type: 'transfer', icon: 'arrow-left-right', color: '#94a3b8' },
 ]
 
 export const CATEGORY_ICON_OPTIONS = [

@@ -4,7 +4,6 @@ import { useState, useMemo } from 'react'
 import {
   TrendingUp,
   TrendingDown,
-  ArrowRightLeft,
   Flame,
   CalendarDays,
   Trophy,
@@ -364,13 +363,6 @@ export default function ReportsPage() {
               color="var(--danger)"
               icon={TrendingDown}
               sub={`${transactions.filter(tx => tx.type === 'expense').length} transaksi`}
-            />
-            <StatCard
-              label="Transfer"
-              amount={sums.transfer}
-              color="#60a5fa"
-              icon={ArrowRightLeft}
-              sub={`${transactions.filter(tx => tx.type === 'transfer').length} transaksi`}
             />
             <StatCard
               label="Sisa Anggaran"

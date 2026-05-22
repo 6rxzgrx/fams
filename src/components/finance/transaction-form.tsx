@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useForm, Controller, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { Star } from 'lucide-react'
 import { CreateTransactionSchema, type CreateTransactionInput, type Transaction } from '@/domain/types'
 import { CATEGORY_TYPE_LABELS, getCategoryTypeFromId } from '@/domain/categories'
 import { Button } from '@/components/ui/button'
@@ -15,6 +16,7 @@ import { TransactionCategoryPicker } from '@/components/finance/transaction-cate
 import { CategoryIcon } from '@/components/finance/category-icon'
 import { useAccounts } from '@/hooks/use-accounts'
 import { useCategories } from '@/hooks/use-categories'
+import { useFavoriteAccountIds } from '@/hooks/use-favorite-account-ids'
 import { ASSET_TYPE_ICONS, ASSET_TYPE_COLORS } from '@/domain/constants'
 import { format } from 'date-fns'
 
@@ -29,6 +31,14 @@ interface TransactionFormProps {
 export function TransactionForm({ defaultValues, onSubmit, onCancel, loading, cancelLabel = 'Batal' }: TransactionFormProps) {
   const { accounts } = useAccounts()
   const { categories } = useCategories()
+  const { favoriteIds, isFavorite } = useFavoriteAccountIds()
+
+  const sortedAccounts = useMemo(() => {
+    const favs = accounts.filter((a) => favoriteIds.includes(a.id))
+      .sort((a, b) => favoriteIds.indexOf(a.id) - favoriteIds.indexOf(b.id))
+    const rest = accounts.filter((a) => !favoriteIds.includes(a.id))
+    return [...favs, ...rest]
+  }, [accounts, favoriteIds])
 
   const {
     register,
@@ -101,7 +111,7 @@ export function TransactionForm({ defaultValues, onSubmit, onCancel, loading, ca
                 categories={categories}
                 value={field.value}
                 onChange={field.onChange}
-                defaultType={selectedType === 'income' || selectedType === 'expense' || selectedType === 'transfer' ? selectedType : 'expense'}
+                defaultType={selectedType === 'income' || selectedType === 'expense' ? selectedType : 'expense'}
                 label="Buka pilihan kategori"
                 placeholder="Pilih kategori"
               />
@@ -116,7 +126,7 @@ export function TransactionForm({ defaultValues, onSubmit, onCancel, loading, ca
         </div>
       </div>
       <p className="text-xs text-muted-foreground -mt-2">
-        Jenis transaksi: {CATEGORY_TYPE_LABELS[selectedCategoryType ?? (selectedType === 'income' || selectedType === 'expense' || selectedType === 'transfer' ? selectedType : 'expense')]}
+        Jenis transaksi: {CATEGORY_TYPE_LABELS[selectedCategoryType ?? (selectedType === 'income' || selectedType === 'expense' ? selectedType : 'expense')]}
       </p>
 
       {/* Row 4: Akun */}
@@ -144,9 +154,10 @@ export function TransactionForm({ defaultValues, onSubmit, onCancel, loading, ca
                 })()}
               </SelectTrigger>
               <SelectContent>
-                {accounts.map((acc) => {
+                {sortedAccounts.map((acc) => {
                   const icon = acc.icon ?? ASSET_TYPE_ICONS[acc.type] ?? 'wallet'
                   const color = acc.color ?? ASSET_TYPE_COLORS[acc.type] ?? '#64748b'
+                  const starred = isFavorite(acc.id)
                   return (
                     <SelectItem key={acc.id} value={acc.id}>
                       <div className="flex items-center gap-2">
@@ -154,6 +165,9 @@ export function TransactionForm({ defaultValues, onSubmit, onCancel, loading, ca
                           <CategoryIcon icon={icon} className="size-3" />
                         </span>
                         <span>{acc.name}</span>
+                        {starred && (
+                          <Star className="size-3 fill-accent text-accent" strokeWidth={2} aria-hidden="true" />
+                        )}
                       </div>
                     </SelectItem>
                   )

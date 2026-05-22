@@ -31,7 +31,7 @@ interface CategoryFormProps {
   forceType?: CategoryType
 }
 
-const TYPE_OPTIONS: CategoryType[] = ['expense', 'income', 'transfer']
+const TYPE_OPTIONS: CategoryType[] = ['expense', 'income']
 
 export function CategoryForm({
   categories,

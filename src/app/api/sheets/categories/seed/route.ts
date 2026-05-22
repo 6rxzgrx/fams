@@ -13,32 +13,27 @@ import { getSessionMember } from '@/lib/api-helpers'
 type SeedNode = { name: string; color?: string; budget_type?: string; children?: string[] }
 
 const EXPENSE_SEEDS: SeedNode[] = [
-  { name: 'Belanja', color: '#f59e0b', budget_type: 'wants', children: ['Baju', 'Belanja Online', 'Gadget/Elektronik', 'Groceries', 'Belum Terkategori'] },
+  { name: 'Belanja', color: '#f59e0b', budget_type: 'needs', children: ['Sandang', 'Belanja Online', 'Gadget/Elektronik', 'Aksesoris', 'Groceries'] },
   { name: 'Hiburan', color: '#a855f7', budget_type: 'wants' },
-  { name: 'Hutang Piutang', color: '#ef4444', budget_type: 'needs', children: ['Bayar Hutang', 'Beri Pinjaman'] },
-  { name: 'Investasi', color: '#10b981', budget_type: 'savings', children: ['Emas', 'Reksadana', 'Saham', 'Tabungan'] },
-  { name: 'Keluarga', color: '#f97316', budget_type: 'wants' },
-  { name: 'Kesehatan', color: '#06b6d4', budget_type: 'needs' },
-  { name: 'Lain-lain', color: '#94a3b8', budget_type: 'wants' },
-  { name: 'Makan dan Minum', color: '#f43f5e', budget_type: 'needs', children: ['Jajan', 'Online Delivery', 'Restoran'] },
-  { name: 'Pekerjaan', color: '#3b82f6', budget_type: 'needs' },
-  { name: 'Pendidikan', color: '#8b5cf6', budget_type: 'needs' },
-  { name: 'Pinjaman', color: '#dc2626', budget_type: 'needs', children: ['Cicilan Mobil', 'Cicilan Rumah', 'Hutang'] },
+  { name: 'Tabungan', color: '#10b981', budget_type: 'savings', children: ['Emas', 'Reksadana', 'Tabungan', 'Saham'] },
+  { name: 'Keluarga', color: '#f97316', budget_type: 'sedekah' },
+  { name: 'Kesehatan', color: '#06b6d4', budget_type: 'needs', children: ['Member Gym', 'Obat'] },
+  { name: 'Makan dan Minum', color: '#f43f5e', budget_type: 'needs', children: ['Jajan', 'Online Delivery', 'Restoran', 'Cafe'] },
+  { name: 'Pinjaman', color: '#dc2626', budget_type: 'needs', children: ['Cicilan Motor', 'Hutang'] },
   { name: 'Sedekah', color: '#16a34a', budget_type: 'sedekah', children: ['Infaq', 'Sumbangan', 'Zakat'] },
-  { name: 'Tagihan', color: '#0ea5e9', budget_type: 'needs', children: ['Air', 'Gas', 'Internet', 'Kartu Kredit', 'Listrik', 'Pulsa dan Paket Data', 'TV Kabel'] },
-  { name: 'Transportasi', color: '#64748b', budget_type: 'needs', children: ['Bensin', 'Parkir', 'Taxi/Ojol'] },
+  { name: 'Tagihan', color: '#0ea5e9', budget_type: 'needs', children: ['Gas', 'Paket Data & Pulsa', 'Listrik', 'Paylater'] },
+  { name: 'Transportasi', color: '#64748b', budget_type: 'needs', children: ['Bensin', 'Parkir', 'Ojol'] },
+  { name: 'Lain-lain', color: '#94a3b8', budget_type: 'wants' },
 ]
 
 const INCOME_SEEDS: SeedNode[] = [
+  { name: 'Gaji', color: '#3b82f6' },
   { name: 'Bisnis', color: '#10b981' },
   { name: 'Bonus', color: '#f59e0b' },
-  { name: 'Gaji', color: '#3b82f6' },
-  { name: 'Hutang Piutang', color: '#ef4444', children: ['Pinjam Uang', 'Piutang Dibayar'] },
   { name: 'Investasi', color: '#8b5cf6' },
-  { name: 'Lain-lain', color: '#94a3b8' },
   { name: 'Pemberian', color: '#f97316' },
   { name: 'Penjualan', color: '#06b6d4' },
-  { name: 'Pinjaman', color: '#dc2626' },
+  { name: 'Lain-lain', color: '#94a3b8' },
 ]
 
 // ─── Route handler ────────────────────────────────────────────────────────────

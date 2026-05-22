@@ -43,12 +43,14 @@ export function buildRegistryData(
       const satuan = a.satuan || ASSET_TYPE_SATUAN[a.type] || 'rupiah'
       const numValue = parseFloat(a.current_balance) || 0
 
-      // Prefer persisted value_idr; fall back to runtime conversion for assets not yet re-saved
-      const storedIdr = parseInt(a.value_idr ?? '0', 10) || 0
-      const idrValue =
-        satuan !== 'rupiah'
-          ? (storedIdr > 0 ? storedIdr : convertAssetToIdr(numValue, a.price_symbol ?? '', rates))
-          : null
+      // Non-rupiah needs a converter to have a valid IDR value.
+      // Prefer persisted value_idr (from last save); fall back to live rate if stale/zero.
+      // No converter → always null (never count raw quantity as IDR).
+      let idrValue: number | null = null
+      if (satuan !== 'rupiah' && a.price_symbol) {
+        const storedIdr = a.value_idr ? parseInt(a.value_idr, 10) : 0
+        idrValue = storedIdr > 0 ? storedIdr : convertAssetToIdr(numValue, a.price_symbol, rates)
+      }
 
       return {
         kind: 'non_liquid' as const,

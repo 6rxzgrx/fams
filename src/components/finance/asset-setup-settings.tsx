@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, ArrowLeftRight, Trash2, Wallet, Briefcase } from 'lucide-react';
+import { Plus, ArrowLeftRight, Trash2, Wallet, Briefcase, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -38,6 +38,7 @@ import {
 	useDeleteAsset,
 } from '@/hooks/use-assets';
 import { usePriceRates } from '@/hooks/use-price-rates';
+import { useFavoriteAccountIds } from '@/hooks/use-favorite-account-ids';
 import { convertAssetToIdr } from '@/domain/rates';
 import {
 	ASSET_TYPE_LABELS,
@@ -396,6 +397,7 @@ function LiquidTab({
 	onAdd: () => void;
 	onSelect: (acc: Asset) => void;
 }) {
+	const { isFavorite, toggleFavorite } = useFavoriteAccountIds();
 	const isEmpty = Object.keys(groups).length === 0;
 	if (isEmpty) {
 		return (
@@ -434,39 +436,52 @@ function LiquidTab({
 							const icon = acc.icon ?? ASSET_TYPE_ICONS[acc.type] ?? 'wallet';
 							const color =
 								acc.color ?? ASSET_TYPE_COLORS[acc.type] ?? '#1e40af';
+							const starred = isFavorite(acc.id);
 							return (
-								<button
-									key={acc.id}
-									type="button"
-									onClick={() => onSelect(acc)}
-									className="flex w-full items-center gap-3 px-5 py-3.5 text-left transition-colors hover:bg-muted/40"
-								>
-									<span
-										className="flex size-10 shrink-0 items-center justify-center rounded-full text-white"
-										style={{ backgroundColor: color }}
+								<div key={acc.id} className="flex items-center transition-colors hover:bg-muted/40">
+									<button
+										type="button"
+										onClick={() => onSelect(acc)}
+										className="flex min-w-0 flex-1 items-center gap-3 px-5 py-3.5 text-left"
 									>
-										<CategoryIcon icon={icon} className="size-5" />
-									</span>
-									<div className="min-w-0 flex-1">
-										<div className="flex items-center gap-1.5">
-											<p className="truncate font-medium">{acc.name}</p>
-											{acc.include_in_saldo === 'false' && (
-												<Badge
-													variant="secondary"
-													className="shrink-0 px-1.5 py-0 text-[10px]"
-												>
-													Dikecualikan
-												</Badge>
-											)}
+										<span
+											className="flex size-10 shrink-0 items-center justify-center rounded-full text-white"
+											style={{ backgroundColor: color }}
+										>
+											<CategoryIcon icon={icon} className="size-5" />
+										</span>
+										<div className="min-w-0 flex-1">
+											<div className="flex items-center gap-1.5">
+												<p className="truncate font-medium">{acc.name}</p>
+												{acc.include_in_saldo === 'false' && (
+													<Badge
+														variant="secondary"
+														className="shrink-0 px-1.5 py-0 text-[10px]"
+													>
+														Dikecualikan
+													</Badge>
+												)}
+											</div>
+											<p className="truncate text-xs text-muted-foreground">
+												{acc.bank_name || ASSET_TYPE_LABELS[acc.type]}
+											</p>
 										</div>
-										<p className="truncate text-xs text-muted-foreground">
-											{acc.bank_name || ASSET_TYPE_LABELS[acc.type]}
-										</p>
-									</div>
-									<MoneyDisplay
-										amount={parseInt(acc.current_balance, 10) || 0}
-									/>
-								</button>
+										<MoneyDisplay
+											amount={parseInt(acc.current_balance, 10) || 0}
+										/>
+									</button>
+									<button
+										type="button"
+										onClick={() => toggleFavorite(acc.id)}
+										aria-label={starred ? `Hapus ${acc.name} dari favorit` : `Tambahkan ${acc.name} ke favorit`}
+										className="flex size-12 shrink-0 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+									>
+										<Star
+											className={cn('size-4', starred && 'fill-accent text-accent')}
+											strokeWidth={2}
+										/>
+									</button>
+								</div>
 							);
 						})}
 					</div>
@@ -546,7 +561,7 @@ function NonLiquidTab({
 										<CategoryIcon icon={icon} className="size-5" />
 									</span>
 									<div className="min-w-0 flex-1">
-										<div className="flex items-center gap-1.5">
+										<div className="flex flex-wrap items-center gap-1.5">
 											<p className="truncate font-medium">{asset.name}</p>
 											{asset.include_in_saldo === 'true' && (
 												<Badge
@@ -554,6 +569,14 @@ function NonLiquidTab({
 													className="shrink-0 px-1.5 py-0 text-[10px]"
 												>
 													Dihitung
+												</Badge>
+											)}
+											{(asset.satuan || ASSET_TYPE_SATUAN[asset.type] || 'rupiah') !== 'rupiah' && !asset.price_symbol && (
+												<Badge
+													variant="warning"
+													className="shrink-0 px-1.5 py-0 text-[10px]"
+												>
+													Konverter belum dipilih
 												</Badge>
 											)}
 										</div>
