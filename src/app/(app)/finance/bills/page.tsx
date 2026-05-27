@@ -7,6 +7,7 @@ import {
 	CalendarDays,
 	CheckCircle2,
 	Clock,
+	Copy,
 	FileText,
 	MoreVertical,
 	Pencil,
@@ -177,12 +178,14 @@ function BillRow({
 	bill,
 	status,
 	onEdit,
+	onDuplicate,
 	onDelete,
 	onPay,
 }: {
 	bill: Bill;
 	status: BillStatus;
 	onEdit: (bill: Bill) => void;
+	onDuplicate: (bill: Bill) => void;
 	onDelete: (bill: Bill) => void;
 	onPay: (bill: Bill) => void;
 }) {
@@ -240,6 +243,10 @@ function BillRow({
 							<Pencil className="mr-2 size-4" />
 							Edit
 						</DropdownMenuItem>
+						<DropdownMenuItem onClick={() => onDuplicate(bill)}>
+							<Copy className="mr-2 size-4" />
+							Duplikat
+						</DropdownMenuItem>
 						<DropdownMenuItem
 							className="text-destructive focus:text-destructive"
 							onClick={() => onDelete(bill)}
@@ -279,6 +286,7 @@ function BillGroupSection({
 	payments,
 	month,
 	onEdit,
+	onDuplicate,
 	onDelete,
 	onPay,
 }: {
@@ -287,6 +295,7 @@ function BillGroupSection({
 	payments: BillPayment[];
 	month: string;
 	onEdit: (bill: Bill) => void;
+	onDuplicate: (bill: Bill) => void;
 	onDelete: (bill: Bill) => void;
 	onPay: (bill: Bill) => void;
 }) {
@@ -326,6 +335,7 @@ function BillGroupSection({
 						bill={bill}
 						status={getBillStatus(bill, payments, month)}
 						onEdit={onEdit}
+						onDuplicate={onDuplicate}
 						onDelete={onDelete}
 						onPay={onPay}
 					/>
@@ -467,7 +477,7 @@ function BillFormDialog({
 		};
 
 		try {
-			const res = bill
+			const res = bill?.id
 				? await updateBill({ id: bill.id, data })
 				: await createBill(data);
 
@@ -475,7 +485,7 @@ function BillFormDialog({
 				toast.error(res.error);
 				return;
 			}
-			toast.success(bill ? 'Tagihan diperbarui' : 'Tagihan ditambahkan');
+			toast.success(bill?.id ? 'Tagihan diperbarui' : 'Tagihan ditambahkan');
 			onSaved();
 			onClose();
 		} catch {
@@ -487,7 +497,7 @@ function BillFormDialog({
 		<Dialog open={open} onOpenChange={(o) => !o && onClose()}>
 			<DialogContent className="sm:max-w-[480px]">
 				<DialogHeader>
-					<DialogTitle>{bill ? 'Edit Tagihan' : 'Tambah Tagihan'}</DialogTitle>
+					<DialogTitle>{bill?.id ? 'Edit Tagihan' : 'Tambah Tagihan'}</DialogTitle>
 				</DialogHeader>
 
 				<form onSubmit={handleSubmit} className="space-y-4 pt-1">
@@ -786,6 +796,11 @@ export default function BillsPage() {
 		setFormOpen(true);
 	}
 
+	function openDuplicate(bill: Bill) {
+		setEditBill({ ...bill, id: '' });
+		setFormOpen(true);
+	}
+
 	function handleSaved() {
 		mutateBills();
 		mutatePayments();
@@ -1047,6 +1062,7 @@ export default function BillsPage() {
 													payments={payments}
 													month={month}
 													onEdit={openEdit}
+													onDuplicate={openDuplicate}
 													onDelete={(b) => setDeleteBill(b)}
 													onPay={(b) => setPayBill(b)}
 												/>

@@ -2,8 +2,8 @@
 
 import { useDeferredValue, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Search, Star, ChevronDown, Check } from 'lucide-react';
-import type { CategoryType, TransactionCategory } from '@/domain/types';
+import { Search, Star, ChevronDown, Check, Plus } from 'lucide-react';
+import type { CategoryType, TransactionCategory, CreateTransactionCategoryInput } from '@/domain/types';
 import {
 	CATEGORY_TYPE_LABELS,
 	formatCategoryLabel,
@@ -11,6 +11,8 @@ import {
 	searchSelectableCategories,
 } from '@/domain/categories';
 import { useFavoriteCategoryIds } from '@/hooks/use-favorite-category-ids';
+import { useCreateCategory } from '@/hooks/use-categories';
+import { CategoryForm } from '@/components/finance/category-form';
 import { Button } from '@/components/ui/button';
 import {
 	Dialog,
@@ -19,8 +21,10 @@ import {
 	DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import React from 'react';
 import { CategoryIcon } from '@/components/finance/category-icon';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 const ALL_CATEGORY_TYPES: CategoryType[] = ['expense', 'income'];
 
@@ -32,6 +36,7 @@ interface TransactionCategoryPickerProps {
 	defaultType?: CategoryType;
 	label?: string;
 	placeholder?: string;
+	onCategoryCreated?: (categoryId: string) => void;
 }
 
 export function TransactionCategoryPicker({
@@ -42,6 +47,7 @@ export function TransactionCategoryPicker({
 	defaultType = 'expense',
 	label = 'Pilih kategori',
 	placeholder = 'Pilih kategori',
+	onCategoryCreated,
 }: TransactionCategoryPickerProps) {
 	const [open, setOpen] = useState(false);
 	const [query, setQuery] = useState('');
@@ -50,6 +56,8 @@ export function TransactionCategoryPicker({
 	const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
 		new Set(),
 	);
+	const [showAddCategory, setShowAddCategory] = useState(false);
+	const { trigger: createCategory, isMutating: isCreating } = useCreateCategory();
 
 	const selectedCategory = categories.find((c) => c.id === value);
 	const normalizedDefaultType = allowedTypes.includes(defaultType)
@@ -419,7 +427,16 @@ export function TransactionCategoryPicker({
 						)}
 					</div>
 
-					<div className="border-t border-border px-5 py-3">
+					<div className="border-t border-border px-5 py-3 space-y-2">
+						<Button
+							type="button"
+							variant="outline"
+							className="w-full"
+							onClick={() => setShowAddCategory(true)}
+						>
+							<Plus className="size-4 mr-2" />
+							Tambah Kategori
+						</Button>
 						<Button
 							type="button"
 							variant="outline"
@@ -431,6 +448,19 @@ export function TransactionCategoryPicker({
 					</div>
 				</DialogContent>
 			</Dialog>
+
+			<AddCategoryDialog
+				open={showAddCategory}
+				onOpenChange={setShowAddCategory}
+				defaultType={activeType}
+				onSuccess={(newCategoryId) => {
+					onChange(newCategoryId);
+					onCategoryCreated?.(newCategoryId);
+				}}
+				isCreating={isCreating}
+				createCategory={createCategory}
+				categories={categories}
+			/>
 		</>
 	);
 }
@@ -540,5 +570,59 @@ function EmptyCategoryState() {
 		<div className="rounded-xl border border-dashed border-border bg-surface px-4 py-6 text-center text-sm text-muted-foreground">
 			Tidak ada kategori yang cocok.
 		</div>
+	);
+}
+
+interface AddCategoryDialogProps {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	defaultType: CategoryType;
+	onSuccess: (categoryId: string) => void;
+	isCreating: boolean;
+	createCategory: (data: CreateTransactionCategoryInput) => Promise<{ ok: boolean; data?: TransactionCategory; error?: string }>;
+	categories: TransactionCategory[];
+}
+
+function AddCategoryDialog({
+	open,
+	onOpenChange,
+	defaultType,
+	onSuccess,
+	isCreating,
+	createCategory,
+	categories,
+}: AddCategoryDialogProps) {
+	const handleSubmit = async (data: CreateTransactionCategoryInput) => {
+		try {
+			const result = await createCategory(data);
+
+			if (result.ok && result.data) {
+				toast.success('Kategori berhasil ditambahkan');
+				onOpenChange(false);
+				onSuccess(result.data.id);
+			} else {
+				toast.error(result.error || 'Gagal menambahkan kategori');
+			}
+		} catch (error) {
+			toast.error('Terjadi kesalahan');
+			console.error(error);
+		}
+	};
+
+	return (
+		<Dialog open={open} onOpenChange={onOpenChange}>
+			<DialogContent className="sm:max-w-sm max-h-[90vh] overflow-y-auto">
+				<DialogHeader>
+					<DialogTitle>Tambah Kategori Baru</DialogTitle>
+				</DialogHeader>
+				<CategoryForm
+					categories={categories}
+					onSubmit={handleSubmit}
+					onCancel={() => onOpenChange(false)}
+					loading={isCreating}
+					forceType={defaultType}
+				/>
+			</DialogContent>
+		</Dialog>
 	);
 }

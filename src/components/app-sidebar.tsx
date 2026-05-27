@@ -23,8 +23,6 @@ import {
 	FileLock,
 	StickyNote,
 	Users,
-	Plug,
-	Shield,
 	Boxes,
 	ChevronRight,
 	ChevronsUpDown,
@@ -69,6 +67,7 @@ type NavItem =
 
 const NAV: NavItem[] = [
 	{ kind: 'link', href: '/home', label: 'Beranda', icon: Home },
+	{ kind: 'link', href: '/notifications', label: 'Notifikasi', icon: Bell },
 	{
 		kind: 'group',
 		label: 'Keuangan',
@@ -110,9 +109,6 @@ const NAV: NavItem[] = [
 			{ href: '/settings', label: 'Umum' },
 			{ href: '/settings/finance-setup', label: 'Finance Setup' },
 			{ href: '/settings/members', label: 'Anggota' },
-			{ href: '/settings/notifications', label: 'Notifikasi' },
-			{ href: '/settings/integrations', label: 'Integrasi' },
-			{ href: '/settings/audit-log', label: 'Riwayat Aktivitas' },
 		],
 	},
 ];
@@ -134,9 +130,6 @@ const SUB_ICONS: Record<string, LucideIcon> = {
 	'/settings': Settings,
 	'/settings/finance-setup': SlidersHorizontal,
 	'/settings/members': Users,
-	'/settings/notifications': Bell,
-	'/settings/integrations': Plug,
-	'/settings/audit-log': Shield,
 };
 
 function isExactActive(pathname: string, href: string) {

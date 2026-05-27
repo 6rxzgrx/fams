@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { ArrowDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -17,15 +18,22 @@ import type { Asset } from '@/domain/types'
 
 interface MoveBalanceFormProps {
   accounts: Asset[]
-  onSubmit: (data: { from_id: string; to_id: string; amount: number }) => void
+  onSubmit: (data: { from_id: string; to_id: string; amount: number; date: string; description?: string }) => void
   onCancel: () => void
   loading?: boolean
+}
+
+function todayIso() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 export function MoveBalanceForm({ accounts, onSubmit, onCancel, loading }: MoveBalanceFormProps) {
   const [fromId, setFromId] = useState('')
   const [toId, setToId] = useState('')
   const [amount, setAmount] = useState(0)
+  const [date, setDate] = useState(todayIso())
+  const [description, setDescription] = useState('')
 
   const fromAccount = accounts.find((a) => a.id === fromId)
   const fromBalance = fromAccount ? parseInt(fromAccount.current_balance, 10) || 0 : 0
@@ -33,12 +41,12 @@ export function MoveBalanceForm({ accounts, onSubmit, onCancel, loading }: MoveB
   const toOptions = accounts.filter((a) => a.id !== fromId)
 
   const amountError = amount > 0 && amount > fromBalance ? 'Saldo tidak cukup' : null
-  const canSubmit = fromId && toId && amount > 0 && !amountError && !loading
+  const canSubmit = fromId && toId && amount > 0 && date && !amountError && !loading
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!canSubmit) return
-    onSubmit({ from_id: fromId, to_id: toId, amount })
+    onSubmit({ from_id: fromId, to_id: toId, amount, date, description: description || undefined })
   }
 
   return (
@@ -95,6 +103,26 @@ export function MoveBalanceForm({ accounts, onSubmit, onCancel, loading }: MoveB
         {amountError && (
           <p className="text-xs text-destructive">{amountError}</p>
         )}
+      </div>
+
+      <div className="space-y-2">
+        <Label>Tanggal</Label>
+        <Input
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          disabled={loading}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label>Keterangan <span className="text-muted-foreground font-normal">(opsional)</span></Label>
+        <Input
+          placeholder="Misal: Bayar cicilan, Top up dompet"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          disabled={loading}
+        />
       </div>
 
       <div className="flex gap-2 pt-2">

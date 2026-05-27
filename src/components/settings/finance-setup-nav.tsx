@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Tags, Briefcase, RefreshCw } from 'lucide-react'
+import { Tags, Briefcase, RefreshCw, History } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const ITEMS = [
@@ -17,6 +17,12 @@ const ITEMS = [
     label: 'Asset',
     description: 'Akun dan aset fisik keluarga',
     icon: Briefcase,
+  },
+  {
+    href: '/settings/finance-setup/asset-log',
+    label: 'Asset Log',
+    description: 'Riwayat perubahan saldo aset',
+    icon: History,
   },
   {
     href: '/settings/finance-setup/converter',

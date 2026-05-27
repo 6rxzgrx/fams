@@ -11,7 +11,6 @@ import {
 	ExternalLink,
 	Eye,
 	EyeOff,
-	FileText,
 	Loader2,
 	RefreshCw,
 	TrendingDown,
@@ -33,7 +32,6 @@ import { QuantityDisplay } from '@/components/finance/quantity-display';
 import { TransactionItem } from '@/components/finance/transaction-item';
 import { CategoryIcon } from '@/components/finance/category-icon';
 import {
-	buildRegistryData,
 	buildRegistryDataLegacy,
 	type RegistryItem,
 } from '@/components/finance/asset-registry-shared';
@@ -45,7 +43,10 @@ import { MobileBackButton } from '@/components/nav/mobile-back-button';
 import { PageContainer } from '@/components/layout/page-container';
 import { useAccounts } from '@/hooks/use-accounts';
 import { useAssets } from '@/hooks/use-assets';
-import { useAssetSnapshots, useTakeSnapshot } from '@/hooks/use-asset-snapshots';
+import {
+	useAssetSnapshots,
+	useTakeSnapshot,
+} from '@/hooks/use-asset-snapshots';
 import { useCategories } from '@/hooks/use-categories';
 import { usePriceRates } from '@/hooks/use-price-rates';
 import { useTransactions } from '@/hooks/use-transactions';
@@ -125,7 +126,8 @@ export default function AsetPage() {
 	} = useAssets();
 	const { categories } = useCategories();
 	const { snapshots, mutate: mutateSnapshots } = useAssetSnapshots(6);
-	const { trigger: triggerSnapshot, isMutating: isSnapshotting } = useTakeSnapshot();
+	const { trigger: triggerSnapshot, isMutating: isSnapshotting } =
+		useTakeSnapshot();
 	const { rates } = usePriceRates();
 	const [detail, setDetail] = useState<RegistryItem | null>(null);
 	const [hideValues, setHideValues] = useState(false);
@@ -150,41 +152,42 @@ export default function AsetPage() {
 	}, 0);
 
 	const nowYM = useMemo(() => {
-		const d = new Date()
-		return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-	}, [])
+		const d = new Date();
+		return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+	}, []);
 
 	// Include current month as a live point if no snapshot exists for it yet
 	const displaySnapshots = useMemo(() => {
-		const hasCurrentMonth = snapshots.some((s) => s.month === nowYM)
-		if (hasCurrentMonth) return snapshots.slice(-6)
+		const hasCurrentMonth = snapshots.some((s) => s.month === nowYM);
+		if (hasCurrentMonth) return snapshots.slice(-6);
 		const livePoint = {
 			id: 'live',
 			month: nowYM,
 			liquid_total: String(liquidTotal),
 			non_liquid_total: String(nonLiquidTotal),
 			snapshot_at: new Date().toISOString(),
-		}
-		return [...snapshots.slice(-5), livePoint]
-	}, [snapshots, nowYM, liquidTotal, nonLiquidTotal])
+		};
+		return [...snapshots.slice(-5), livePoint];
+	}, [snapshots, nowYM, liquidTotal, nonLiquidTotal]);
 
-	const isLiveMonth = !snapshots.some((s) => s.month === nowYM)
+	const isLiveMonth = !snapshots.some((s) => s.month === nowYM);
 
 	async function handleTakeSnapshot() {
 		try {
-			const result = await triggerSnapshot({})
+			const result = await triggerSnapshot({});
 			if (result?.ok) {
-				toast.success('Snapshot berhasil disimpan')
+				toast.success('Snapshot berhasil disimpan');
 			} else {
-				toast.error(result?.error ?? 'Gagal menyimpan snapshot')
+				toast.error(result?.error ?? 'Gagal menyimpan snapshot');
 			}
 		} catch {
-			toast.error('Gagal menyimpan snapshot')
+			toast.error('Gagal menyimpan snapshot');
 		}
-		await mutateSnapshots()
+		await mutateSnapshots();
 	}
 
-	const { growthPct, avgMonthly, currentMonth } = computeGrowthStats(displaySnapshots);
+	const { growthPct, avgMonthly, currentMonth } =
+		computeGrowthStats(displaySnapshots);
 
 	function handleRetry() {
 		mutateAccounts();
@@ -717,13 +720,16 @@ function AsetDetailDialog({
 }) {
 	const linkedAccountId = detail.kind === 'liquid' ? detail.id : '__none__';
 
-	const { transactions, isLoading, error } = useTransactions({
+	const {
+		transactions,
+		isLoading: txLoading,
+		error: txError,
+	} = useTransactions({
 		account_id: linkedAccountId,
 		limit: 5,
 	});
 
 	const hasLinkedAccount = detail.kind === 'liquid';
-
 	const transactionsHref = `/finance/transactions?account_id=${linkedAccountId}`;
 
 	return (
@@ -771,20 +777,19 @@ function AsetDetailDialog({
 				/>
 			</div>
 
-			<section className="space-y-3">
-				<div className="flex items-center justify-between gap-3">
-					<div>
-						<h3 className="text-sm font-semibold">Transaksi Terkait</h3>
-						<p className="text-[12px] text-muted-foreground">
-							{detail.kind === 'liquid'
-								? 'Riwayat transaksi akun ini.'
-								: 'Aset non-likuid tidak memiliki riwayat transaksi.'}
-						</p>
-					</div>
-					{hasLinkedAccount && (
+			{/* Transaksi Terkait — liquid only */}
+			{hasLinkedAccount && (
+				<section className="space-y-3">
+					<div className="flex items-center justify-between gap-3">
+						<div>
+							<h3 className="text-sm font-semibold">Transaksi Terkait</h3>
+							<p className="text-[12px] text-muted-foreground">
+								Riwayat transaksi akun ini.
+							</p>
+						</div>
 						<Button asChild variant="outline" size="sm" className="shrink-0">
 							<Link href={transactionsHref}>
-								Lihat Transaksi
+								Lihat Semua
 								<ExternalLink
 									className="size-3.5"
 									strokeWidth={2.25}
@@ -792,51 +797,56 @@ function AsetDetailDialog({
 								/>
 							</Link>
 						</Button>
-					)}
-				</div>
-
-				{!hasLinkedAccount ? (
-					<EmptyState
-						icon={FileText}
-						title="Belum ada transaksi"
-						description="Aset non-likuid yang belum ditautkan ke akun tidak memiliki riwayat transaksi."
-						className="rounded-xl border border-border bg-surface py-8"
-					/>
-				) : isLoading ? (
-					<div className="divide-y divide-border">
-						{[0, 1, 2].map((i) => (
-							<div key={i} className="flex items-center gap-3 px-4 py-3">
-								<Skeleton className="size-9 shrink-0 rounded-full" />
-								<div className="flex-1 space-y-1.5">
-									<Skeleton className="h-3.5 w-32 rounded" />
-									<Skeleton className="h-3 w-20 rounded" />
-								</div>
-								<Skeleton className="h-4 w-16 rounded" />
-							</div>
-						))}
 					</div>
-				) : error ? (
-					<ErrorState message={error} />
-				) : transactions.length === 0 ? (
-					<EmptyState
-						icon={ArrowLeftRight}
-						title="Belum ada transaksi"
-						description="Belum ada transaksi untuk aset ini."
-						className="rounded-xl border border-border bg-surface py-8"
-					/>
-				) : (
-					<div className="overflow-hidden rounded-xl border border-border bg-surface">
+
+					{txLoading ? (
 						<div className="divide-y divide-border">
-							{transactions.map((tx) => (
-								<TransactionItem
-									key={tx.id}
-									transaction={tx}
-									categories={categories}
-								/>
+							{[0, 1, 2].map((i) => (
+								<div key={i} className="flex items-center gap-3 px-4 py-3">
+									<Skeleton className="size-9 shrink-0 rounded-full" />
+									<div className="flex-1 space-y-1.5">
+										<Skeleton className="h-3.5 w-32 rounded" />
+										<Skeleton className="h-3 w-20 rounded" />
+									</div>
+									<Skeleton className="h-4 w-16 rounded" />
+								</div>
 							))}
 						</div>
-					</div>
-				)}
+					) : txError ? (
+						<ErrorState message={txError} />
+					) : transactions.length === 0 ? (
+						<EmptyState
+							icon={ArrowLeftRight}
+							title="Belum ada transaksi"
+							description="Belum ada transaksi untuk akun ini."
+							className="rounded-xl border border-border bg-surface py-8"
+						/>
+					) : (
+						<div className="overflow-hidden rounded-xl border border-border bg-surface">
+							<div className="divide-y divide-border">
+								{transactions.map((tx) => (
+									<TransactionItem
+										key={tx.id}
+										transaction={tx}
+										categories={categories}
+									/>
+								))}
+							</div>
+						</div>
+					)}
+				</section>
+			)}
+
+			{/* Riwayat Mutasi — all assets */}
+			<section className="space-y-3">
+				<div>
+					<h3 className="text-sm font-semibold">Riwayat Mutasi</h3>
+					<p className="text-[12px] text-muted-foreground">
+						{detail.kind === 'liquid'
+							? 'Perubahan saldo manual pada akun ini.'
+							: 'Riwayat perubahan nilai aset ini.'}
+					</p>
+				</div>
 			</section>
 		</div>
 	);

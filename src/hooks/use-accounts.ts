@@ -75,7 +75,7 @@ export function useCreateTransfer() {
   return useSWRMutation('/api/sheets/transactions/transfer', transferFetcher)
 }
 
-async function moveBalanceFetcher(url: string, { arg }: { arg: { from_id: string; to_id: string; amount: number } }) {
+async function moveBalanceFetcher(url: string, { arg }: { arg: { from_id: string; to_id: string; amount: number; date?: string; description?: string } }) {
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

@@ -40,10 +40,7 @@ import { usePriceRates } from '@/hooks/use-price-rates';
 import { formatMoney, formatMoneyCompact } from '@/lib/money';
 import { cn } from '@/lib/utils';
 import { getMonthRange, sumByType } from '@/domain/transactions';
-import {
-	BUDGET_TYPE_LABELS,
-	BUDGET_TYPE_COLORS,
-} from '@/domain/constants';
+import { BUDGET_TYPE_LABELS, BUDGET_TYPE_COLORS } from '@/domain/constants';
 import { buildRegistryDataLegacy } from '@/components/finance/asset-registry-shared';
 import type { Bill, BudgetType } from '@/domain/types';
 import type { Transaction, TransactionCategory } from '@/domain/types';
@@ -128,7 +125,11 @@ export default function RingkasanPage() {
 	const { transactions: recentTx } = useTransactions({ limit: 5 });
 
 	// ── Aggregates ───────────────────────────────────────────────
-	const { liquidItems, nonLiquidItems, totalNilai } = buildRegistryDataLegacy(accounts, assets, rates);
+	const { liquidItems, nonLiquidItems, totalNilai } = buildRegistryDataLegacy(
+		accounts,
+		assets,
+		rates,
+	);
 
 	const liquidAccounts = accounts.filter(
 		(a) => a.include_in_saldo !== 'false' && !a.deleted_at,
@@ -761,14 +762,7 @@ function SubPagesNav({
 						: 'warning',
 			Icon: Target,
 		},
-		{
-			href: '/finance/assets',
-			label: 'Aset',
-			sub: `${accountsCount} likuid · ${assetsCount} non-likuid`,
-			stat: formatMoneyCompact(liquid + assets),
-			tone: 'accent',
-			Icon: Coins,
-		},
+
 		{
 			href: '/finance/bills',
 			label: 'Tagihan',
@@ -776,6 +770,14 @@ function SubPagesNav({
 			stat: 'Lihat',
 			tone: 'neutral',
 			Icon: Receipt,
+		},
+		{
+			href: '/finance/assets',
+			label: 'Aset',
+			sub: `${accountsCount} likuid · ${assetsCount} non-likuid`,
+			stat: formatMoneyCompact(liquid + assets),
+			tone: 'accent',
+			Icon: Coins,
 		},
 		{
 			href: '/finance/reports',
@@ -984,7 +986,13 @@ function formatBillDue(dateStr: string): string {
 	}
 }
 
-function BillsCard({ bills, isLoading }: { bills: Bill[]; isLoading: boolean }) {
+function BillsCard({
+	bills,
+	isLoading,
+}: {
+	bills: Bill[];
+	isLoading: boolean;
+}) {
 	const today = new Date();
 	today.setHours(0, 0, 0, 0);
 	const in30 = new Date(today);
@@ -1031,7 +1039,8 @@ function BillsCard({ bills, isLoading }: { bills: Bill[]; isLoading: boolean }) 
 						href="/finance/bills"
 						className="mt-3 inline-flex items-center gap-1 text-[12.5px] font-semibold text-foreground hover:underline"
 					>
-						Atur tagihan <ArrowUpRight className="size-3.5" strokeWidth={2.25} />
+						Atur tagihan{' '}
+						<ArrowUpRight className="size-3.5" strokeWidth={2.25} />
 					</Link>
 				</div>
 			) : (
@@ -1039,7 +1048,9 @@ function BillsCard({ bills, isLoading }: { bills: Bill[]; isLoading: boolean }) 
 					{upcoming.map((bill) => (
 						<li key={bill.id} className="flex items-center gap-3 py-3">
 							<div className="min-w-0 flex-1">
-								<p className="truncate text-[13px] font-semibold">{bill.name}</p>
+								<p className="truncate text-[13px] font-semibold">
+									{bill.name}
+								</p>
 								<p className="text-[11.5px] text-muted-foreground">
 									{formatBillDue(bill.due_date)}
 								</p>

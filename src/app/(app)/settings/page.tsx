@@ -5,12 +5,9 @@ import Link from 'next/link'
 import {
   LogOut,
   ChevronRight,
-  Shield,
   Palette,
   SlidersHorizontal,
   Users,
-  Bell,
-  Plug,
   type LucideIcon,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -38,24 +35,6 @@ const ITEMS: SettingItem[] = [
     label: 'Anggota Keluarga',
     description: 'Kelola peran & akses modul',
     icon: Users,
-  },
-  {
-    href: '/settings/notifications',
-    label: 'Notifikasi',
-    description: 'Pengingat & ringkasan harian',
-    icon: Bell,
-  },
-  {
-    href: '/settings/integrations',
-    label: 'Integrasi',
-    description: 'Google OAuth, Drive, Calendar, Gemini',
-    icon: Plug,
-  },
-  {
-    href: '/settings/audit-log',
-    label: 'Riwayat Aktivitas',
-    description: 'Siapa mengubah apa, kapan',
-    icon: Shield,
   },
 ]
 

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { assetsRepo } from '@/integrations/sheets/repositories/assets'
+import { assetMutationsRepo } from '@/integrations/sheets/repositories/asset-mutations'
 import { priceRatesRepo } from '@/integrations/sheets/repositories/price-rates'
 import { CreateAssetSchema, ok, fail } from '@/domain/types'
 import { computeValueIdr } from '@/domain/rates'
@@ -83,6 +84,23 @@ export async function POST(req: Request) {
       deleted_at: '',
       value_idr,
     })
+
+    // Record initial balance as first mutation
+    if (parsed.data.current_balance > 0) {
+      await assetMutationsRepo.create({
+        id: generateId('asset_mutation'),
+        asset_id: id,
+        mutation_type: 'increase',
+        mutation_category: 'penyesuaian_saldo',
+        previous_balance: '0',
+        delta: String(parsed.data.current_balance),
+        new_balance: String(parsed.data.current_balance),
+        satuan: parsed.data.satuan,
+        description: 'Saldo awal',
+        created_by: member.id,
+        created_at: now,
+      })
+    }
 
     await writeAudit({
       memberId: member.id,

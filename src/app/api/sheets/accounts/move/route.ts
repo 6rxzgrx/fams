@@ -1,16 +1,20 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { assetsRepo } from '@/integrations/sheets/repositories/assets'
+import { assetMutationsRepo } from '@/integrations/sheets/repositories/asset-mutations'
 import { ok, fail } from '@/domain/types'
 import { canWrite } from '@/domain/permissions'
 import { writeAudit } from '@/lib/audit'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { getSessionMember } from '@/lib/api-helpers'
+import { generateId } from '@/lib/ulid'
 
 const MoveBalanceSchema = z.object({
   from_id: z.string().min(1),
   to_id: z.string().min(1),
   amount: z.number().int().positive('Jumlah harus lebih dari 0'),
+  date: z.string().optional(),
+  description: z.string().optional(),
 })
 
 export async function POST(req: Request) {
@@ -36,7 +40,7 @@ export async function POST(req: Request) {
       return NextResponse.json(fail(parsed.error.issues[0].message), { status: 400 })
     }
 
-    const { from_id, to_id, amount } = parsed.data
+    const { from_id, to_id, amount, date, description } = parsed.data
 
     if (from_id === to_id) {
       return NextResponse.json(fail('Akun asal dan tujuan tidak boleh sama'), { status: 400 })
@@ -66,7 +70,24 @@ export async function POST(req: Request) {
       assetsRepo.update(to_id, { current_balance: String(toBalance + amount) }),
     ])
 
+    const now = date ? new Date(date).toISOString() : new Date().toISOString()
+    // description stores "from_name||to_name" so the log can render "BRI → DANA"
+    const transferDesc = `${fromAcc.name}||${toAcc.name}${description ? `||note:${description}` : ''}`
+
     await Promise.all([
+      assetMutationsRepo.create({
+        id: generateId('asset_mutation'),
+        asset_id: from_id,
+        mutation_type: 'neutral',
+        mutation_category: 'pindah_saldo',
+        previous_balance: String(fromBalance),
+        delta: String(amount),
+        new_balance: String(fromBalance - amount),
+        satuan: 'rupiah',
+        description: transferDesc,
+        created_by: member.id,
+        created_at: now,
+      }),
       writeAudit({
         memberId: member.id,
         memberName: member.name,

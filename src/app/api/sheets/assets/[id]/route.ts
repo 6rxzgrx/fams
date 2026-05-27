@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server'
 import { assetsRepo } from '@/integrations/sheets/repositories/assets'
+import { assetMutationsRepo } from '@/integrations/sheets/repositories/asset-mutations'
 import { priceRatesRepo } from '@/integrations/sheets/repositories/price-rates'
 import { UpdateAssetSchema, ok, fail } from '@/domain/types'
 import { computeValueIdr } from '@/domain/rates'
 import { canWrite } from '@/domain/permissions'
 import { writeAudit } from '@/lib/audit'
 import { getSessionMember } from '@/lib/api-helpers'
+import { generateId } from '@/lib/ulid'
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { member, error } = await getSessionMember()
@@ -54,6 +56,27 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     )
 
     const updated = await assetsRepo.update(id, patch)
+
+    // Record balance mutation if current_balance changed
+    if (parsed.data.current_balance !== undefined) {
+      const prevBal = parseFloat(existing.current_balance) || 0
+      const newBal = parsed.data.current_balance
+      const delta = newBal - prevBal
+      const satuan = (parsed.data.satuan ?? existing.satuan) || 'rupiah'
+      await assetMutationsRepo.create({
+        id: generateId('asset_mutation'),
+        asset_id: id,
+        mutation_type: delta > 0 ? 'increase' : delta < 0 ? 'decrease' : 'neutral',
+        mutation_category: 'penyesuaian_saldo',
+        previous_balance: String(prevBal),
+        delta: String(delta),
+        new_balance: String(newBal),
+        satuan,
+        description: parsed.data.notes ?? existing.notes ?? '',
+        created_by: member.id,
+        created_at: new Date().toISOString(),
+      })
+    }
 
     await writeAudit({
       memberId: member.id,

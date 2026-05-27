@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, ArrowLeftRight, Trash2, Wallet, Briefcase, Star } from 'lucide-react';
+import { Plus, ArrowLeftRight, Wallet, Briefcase, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -167,7 +167,7 @@ export function AssetSetupSettings() {
 		mutateAll();
 	}
 
-	async function handleMoveBalance(data: { from_id: string; to_id: string; amount: number }) {
+	async function handleMoveBalance(data: { from_id: string; to_id: string; amount: number; date: string; description?: string }) {
 		const res = await moveBalance(data);
 		if (!res.ok) {
 			toast.error(res.error);
@@ -228,58 +228,45 @@ export function AssetSetupSettings() {
 				</div>
 			</header>
 
-			{/* Tabs */}
 			<div className="grid grid-cols-2 gap-2 rounded-xl bg-muted/60 p-1">
-				{(
-					[
-						{
-							key: 'liquid',
-							label: 'Likuid',
-							total: liquidTotal,
-							count: liquidAccounts.length,
-						},
-						{
-							key: 'nonliquid',
-							label: 'Non-Likuid',
-							total: nonLiquidTotal,
-							count: nonLiquidAssets.length,
-						},
-					] as const
-				).map((tab) => (
-					<button
-						key={tab.key}
-						type="button"
-						onClick={() => setActiveTab(tab.key)}
-						className={cn(
-							'rounded-lg px-3 py-2 text-sm font-semibold transition-colors',
-							activeTab === tab.key
-								? 'bg-accent text-accent-foreground'
-								: 'text-muted-foreground hover:bg-background/80 hover:text-foreground',
-						)}
-					>
-						{tab.label}
-						{tab.count > 0 && (
-							<span
-								className={cn(
-									'ml-1.5 rounded-full px-1.5 py-0.5 text-[10px]',
-									activeTab === tab.key ? 'bg-white/20' : 'bg-muted',
-								)}
-							>
-								{tab.count}
-							</span>
-						)}
-					</button>
-				))}
-			</div>
+					{(
+						[
+							{ key: 'liquid', label: 'Likuid', count: liquidAccounts.length },
+							{ key: 'nonliquid', label: 'Non-Likuid', count: nonLiquidAssets.length },
+						] as const
+					).map((tab) => (
+						<button
+							key={tab.key}
+							type="button"
+							onClick={() => setActiveTab(tab.key)}
+							className={cn(
+								'rounded-lg px-3 py-2 text-sm font-semibold transition-colors',
+								activeTab === tab.key
+									? 'bg-accent text-accent-foreground'
+									: 'text-muted-foreground hover:bg-background/80 hover:text-foreground',
+							)}
+						>
+							{tab.label}
+							{tab.count > 0 && (
+								<span
+									className={cn(
+										'ml-1.5 rounded-full px-1.5 py-0.5 text-[10px]',
+										activeTab === tab.key ? 'bg-white/20' : 'bg-muted',
+									)}
+								>
+									{tab.count}
+								</span>
+							)}
+						</button>
+					))}
+				</div>
 
 			{isLoading && (
 				<div className="space-y-2">
-					{/* Group header */}
 					<div className="flex items-center justify-between rounded-xl bg-muted/60 px-4 py-2.5">
 						<Skeleton className="h-3.5 w-16 rounded" />
 						<Skeleton className="h-4 w-24 rounded" />
 					</div>
-					{/* Item rows */}
 					{[0, 1, 2, 3].map((i) => (
 						<div key={i} className="flex items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3.5">
 							<Skeleton className="size-10 shrink-0 rounded-full" />
