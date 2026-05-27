@@ -21,6 +21,9 @@ export const TABS = {
   asset_snapshots: 'asset_snapshots',
   price_rates: 'price_rates',
   ai_insights: 'ai_insights',
+  asset_mutations: 'asset_mutations',
+  push_subscriptions: 'push_subscriptions',
+  notification_log: 'notification_log',
 } as const
 
 export type TabName = keyof typeof TABS
@@ -45,6 +48,9 @@ export const COLUMNS: Record<TabName, string[]> = {
   asset_snapshots: ['id', 'month', 'liquid_total', 'non_liquid_total', 'snapshot_at'],
   price_rates: ['id', 'symbol', 'label', 'source', 'value_idr_per_unit', 'unit', 'raw_api_data', 'updated_at'],
   ai_insights: ['id', 'month', 'insight', 'model', 'generated_by', 'generated_at'],
+  asset_mutations: ['id', 'asset_id', 'mutation_type', 'mutation_category', 'previous_balance', 'delta', 'new_balance', 'satuan', 'description', 'created_by', 'created_at'],
+  push_subscriptions: ['id', 'member_id', 'endpoint', 'p256dh', 'auth', 'user_agent', 'created_at', 'deleted_at'],
+  notification_log: ['id', 'member_id', 'type', 'entity_id', 'title', 'body', 'sent_at', 'status'],
 }
 
 export function columnToLetter(col: number): string {
