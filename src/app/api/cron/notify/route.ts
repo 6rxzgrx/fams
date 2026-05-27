@@ -7,11 +7,7 @@ import { billsRepo } from '@/integrations/sheets/repositories/bills'
 import { remindersRepo } from '@/integrations/sheets/repositories/reminders'
 import { generateId } from '@/lib/ulid'
 
-webpush.setVapidDetails(
-  env.VAPID_SUBJECT || 'mailto:admin@example.com',
-  env.VAPID_PUBLIC_KEY,
-  env.VAPID_PRIVATE_KEY,
-)
+// VAPID details are set after the 503 guard inside POST
 
 const DEDUP_WINDOW_MS = 24 * 60 * 60 * 1000 // 24 hours
 
@@ -32,9 +28,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  if (!env.VAPID_PUBLIC_KEY || !env.VAPID_PRIVATE_KEY) {
+  if (!env.VAPID_PUBLIC_KEY || !env.VAPID_PRIVATE_KEY || !env.VAPID_SUBJECT) {
     return NextResponse.json({ error: 'VAPID keys not configured' }, { status: 503 })
   }
+
+  webpush.setVapidDetails(env.VAPID_SUBJECT, env.VAPID_PUBLIC_KEY, env.VAPID_PRIVATE_KEY)
 
   const today = todayStr()
   const threeDaysLater = addDays(today, 3)
@@ -120,11 +118,14 @@ export async function POST(req: Request) {
             JSON.stringify({ title: event.title, body: event.body, url: event.url }),
           )
           memberStatus = 'sent'
-          sent++
         } catch (err) {
           console.error(`[cron/notify] push failed for sub ${sub.id}`, err)
-          failed++
         }
+      }
+      if (memberStatus === 'sent') {
+        sent++
+      } else if (subs.length > 0) {
+        failed++
       }
 
       await notificationLogRepo.create({
