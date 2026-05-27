@@ -16,9 +16,9 @@ export function usePushSubscription() {
 
   useEffect(() => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
-    setIsSupported(true)
 
     navigator.serviceWorker.ready.then((reg) => {
+      setIsSupported(true)
       reg.pushManager.getSubscription().then((sub) => {
         setIsSubscribed(!!sub)
       })
