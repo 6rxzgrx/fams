@@ -20,6 +20,10 @@ const envSchema = z.object({
 	TELEGRAM_BOT_TOKEN: optStr(),
 	TELEGRAM_WEBHOOK_SECRET: optStr(),
 	CRON_SECRET: optStr(),
+	VAPID_PUBLIC_KEY: optStr(),
+	VAPID_PRIVATE_KEY: optStr(),
+	VAPID_SUBJECT: optStr(),
+	NEXT_PUBLIC_VAPID_PUBLIC_KEY: optStr(),
 	GEOAPI_KEY: optStr(),
 	NODE_ENV: z
 		.enum(['development', 'test', 'production'])
@@ -47,6 +51,10 @@ function parseEnv() {
 			TELEGRAM_BOT_TOKEN: '',
 			TELEGRAM_WEBHOOK_SECRET: '',
 			CRON_SECRET: '',
+			VAPID_PUBLIC_KEY: '',
+			VAPID_PRIVATE_KEY: '',
+			VAPID_SUBJECT: '',
+			NEXT_PUBLIC_VAPID_PUBLIC_KEY: '',
 			GEOAPI_KEY: '',
 			NODE_ENV: 'development' as const,
 		};
