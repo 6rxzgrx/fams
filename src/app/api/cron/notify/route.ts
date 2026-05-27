@@ -109,6 +109,7 @@ export async function POST(req: Request) {
       }
 
       const subs = subsByMember.get(memberId) ?? []
+      if (subs.length === 0) continue  // no subscriptions to send to
       let memberStatus: 'sent' | 'failed' = 'failed'
 
       for (const sub of subs) {

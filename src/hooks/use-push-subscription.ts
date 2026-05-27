@@ -66,13 +66,13 @@ export function usePushSubscription() {
       const sub = await reg.pushManager.getSubscription()
       if (!sub) return
 
+      await sub.unsubscribe()
+
       await fetch('/api/notifications/subscribe', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ endpoint: sub.endpoint }),
       })
-
-      await sub.unsubscribe()
       setIsSubscribed(false)
     } finally {
       setIsLoading(false)
