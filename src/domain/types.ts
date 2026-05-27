@@ -95,6 +95,30 @@ export type UpdateAssetInput = z.infer<typeof UpdateAssetSchema>
 // Backward-compat alias
 export type UpdateAccountInput = UpdateAssetInput
 
+// ─── Asset Mutation ───────────────────────────────────────────────────────────
+
+export const AssetMutationSchema = z.object({
+  id: z.string(),
+  asset_id: z.string(),
+  mutation_type: z.enum(['increase', 'decrease', 'neutral']),
+  mutation_category: z.enum(['pindah_saldo', 'penyesuaian_saldo']),
+  previous_balance: z.string(),
+  delta: z.string(),
+  new_balance: z.string(),
+  satuan: z.string().default('rupiah'),
+  description: z.string().default(''),
+  created_by: z.string(),
+  created_at: z.string(),
+})
+
+export type AssetMutation = z.infer<typeof AssetMutationSchema> & {
+  // Enriched by API
+  asset_name?: string
+  asset_color?: string
+  asset_icon?: string
+  created_by_name?: string
+}
+
 // ─── Transaction Category ─────────────────────────────────────────────────────
 
 export const TransactionCategorySchema = z.object({
@@ -195,6 +219,36 @@ export const AuditLogSchema = z.object({
 })
 
 export type AuditLog = z.infer<typeof AuditLogSchema>
+
+// ─── Push Subscription ───────────────────────────────────────────────────────
+
+export const PushSubscriptionSchema = z.object({
+  id: z.string(),
+  member_id: z.string(),
+  endpoint: z.string(),
+  p256dh: z.string(),
+  auth: z.string(),
+  user_agent: z.string().optional().default(''),
+  created_at: z.string(),
+  deleted_at: z.string().optional().default(''),
+})
+
+export type PushSubscription = z.infer<typeof PushSubscriptionSchema>
+
+// ─── Notification Log ─────────────────────────────────────────────────────────
+
+export const NotificationLogSchema = z.object({
+  id: z.string(),
+  member_id: z.string(),
+  type: z.enum(['bill_due', 'reminder']),
+  entity_id: z.string(),
+  title: z.string(),
+  body: z.string(),
+  sent_at: z.string(),
+  status: z.enum(['sent', 'failed']),
+})
+
+export type NotificationLog = z.infer<typeof NotificationLogSchema>
 
 // ─── Reminder ─────────────────────────────────────────────────────────────────
 

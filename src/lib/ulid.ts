@@ -19,6 +19,9 @@ const PREFIXES = {
   snapshot: 'snap',
   pr: 'pr',
   ai_insight: 'ai',
+  asset_mutation: 'amut',
+  push_sub: 'psub',
+  notif: 'notif',
 } as const
 
 type Entity = keyof typeof PREFIXES
