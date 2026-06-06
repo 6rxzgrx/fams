@@ -13,7 +13,7 @@ import {
 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PageContainer } from '@/components/layout/page-container'
-import { MobileBackButton } from '@/components/nav/mobile-back-button'
+import { PageHeader } from '@/components/layout/page-header'
 import { MonthPicker } from '@/components/finance/month-picker'
 import { ReportAiInsight } from '@/components/finance/report-ai-insight'
 import type { ReportInsightSummary } from '@/hooks/use-report-insight'
@@ -309,27 +309,32 @@ export default function ReportsPage() {
   })
 
   return (
-    <PageContainer bleed>
-      {/* Header */}
-      <header className="flex items-end justify-between gap-3 px-5 py-4 lg:px-0 lg:py-0 lg:pb-6">
-        <div className="min-w-0">
-          <MobileBackButton />
-          <h1 className="truncate text-[22px] font-semibold leading-tight tracking-tight lg:text-[28px]">
-            Laporan Keuangan
-          </h1>
-          <p className="mt-0.5 hidden text-[13px] text-muted-foreground lg:block">
-            Ringkasan, grafik, dan insight {monthLabel}
-          </p>
+    <>
+      <PageHeader
+        variant="sub"
+        title="Laporan Keuangan"
+        subtitle={`Ringkasan, grafik, dan insight ${monthLabel}`}
+        backHref="/finance/dashboard"
+        crumbs={[
+          { href: '/finance/dashboard', label: 'Keuangan' },
+          { href: '/finance/reports', label: 'Laporan' },
+        ]}
+        monthPicker={<MonthPicker value={month} onChange={setMonth} fullWidth />}
+        action={
+          <div className="hidden lg:block">
+            <MonthPicker value={month} onChange={setMonth} />
+          </div>
+        }
+      />
+      <PageContainer bleed>
+      {isLoading && (
+        <div className="px-5 pt-4 lg:px-0 lg:pt-6">
+          <ReportSkeleton />
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <MonthPicker value={month} onChange={setMonth} />
-        </div>
-      </header>
-
-      {isLoading && <ReportSkeleton />}
+      )}
 
       {!isLoading && (
-        <div className="space-y-4 px-5 lg:px-0 pb-8">
+        <div className="space-y-4 px-5 pt-4 lg:px-0 lg:pt-6 pb-8">
           {/* 1. AI Insight */}
           <ReportAiInsight
             month={month}
@@ -533,6 +538,7 @@ export default function ReportsPage() {
           <ReportNotes month={month} />
         </div>
       )}
-    </PageContainer>
+      </PageContainer>
+    </>
   )
 }

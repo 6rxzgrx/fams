@@ -174,6 +174,34 @@ export const SATUAN_OPTIONS = ['gram', 'lot', 'koin', 'unit', 'rupiah'] as const
 export const ACCOUNT_ICON_OPTIONS = ['wallet', 'banknote', 'credit-card', 'piggy-bank', 'landmark', 'smartphone', 'coins', 'building-2'] as const
 export const ACCOUNT_COLOR_OPTIONS = ['#059669', '#1e40af', '#7c3aed', '#db2777', '#dc2626', '#ea580c', '#ca8a04', '#0891b2'] as const
 
+// Icon choices shown in the asset/account add+edit picker. Asset/account-relevant
+// glyphs first (matching ASSET_TYPE_ICONS / ACCOUNT_ICON_OPTIONS), then a few
+// generic basics. All keys must exist in CATEGORY_ICON_MAP.
+export const ASSET_ICON_OPTIONS = [
+  // Accounts / money
+  'wallet',
+  'banknote',
+  'coins',
+  'credit-card',
+  'piggy-bank',
+  'landmark',
+  'building-2',
+  'smartphone',
+  // Investments / non-liquid
+  'bar-chart',
+  'trending-up',
+  'gem',
+  'bitcoin',
+  'home',
+  'car',
+  'briefcase',
+  // Basics
+  'tag',
+  'gift',
+  'zap',
+  'more-horizontal',
+] as const
+
 // Satuan defaults for liquid assets
 export const LIQUID_ASSET_TYPE_SATUAN: Record<string, string> = {
   cash: 'rupiah',

@@ -22,7 +22,7 @@ import {
 } from '@/components/finance/asset-form';
 import { TransferForm } from '@/components/finance/transfer-form'
 import { MoveBalanceForm } from '@/components/finance/move-balance-form';
-import { CategoryIcon } from '@/components/finance/category-icon';
+import { AssetImage } from '@/components/finance/asset-image';
 import {
 	useAccounts,
 	useCreateAccount,
@@ -42,8 +42,6 @@ import { useFavoriteAccountIds } from '@/hooks/use-favorite-account-ids';
 import { convertAssetToIdr } from '@/domain/rates';
 import {
 	ASSET_TYPE_LABELS,
-	ASSET_TYPE_ICONS,
-	ASSET_TYPE_COLORS,
 	ASSET_TYPE_SATUAN,
 } from '@/domain/constants';
 import { cn } from '@/lib/utils';
@@ -196,7 +194,7 @@ export function AssetSetupSettings() {
 	return (
 		<div className="space-y-4">
 			<header className="flex items-start justify-between gap-3">
-				<div>
+				<div className="min-w-0">
 					<h2 className="text-[20px] font-semibold leading-tight tracking-tight lg:text-[24px]">
 						Aset
 					</h2>
@@ -204,7 +202,7 @@ export function AssetSetupSettings() {
 						Kelola aset likuid dan non-likuid keluarga.
 					</p>
 				</div>
-				<div className="flex items-center gap-2">
+				<div className="flex shrink-0 items-center gap-2">
 					{liquidAccounts.length >= 2 && (
 						<Button
 							variant="outline"
@@ -420,9 +418,6 @@ function LiquidTab({
 					</div>
 					<div className="divide-y divide-border bg-surface">
 						{items.map((acc) => {
-							const icon = acc.icon ?? ASSET_TYPE_ICONS[acc.type] ?? 'wallet';
-							const color =
-								acc.color ?? ASSET_TYPE_COLORS[acc.type] ?? '#1e40af';
 							const starred = isFavorite(acc.id);
 							return (
 								<div key={acc.id} className="flex items-center transition-colors hover:bg-muted/40">
@@ -431,12 +426,14 @@ function LiquidTab({
 										onClick={() => onSelect(acc)}
 										className="flex min-w-0 flex-1 items-center gap-3 px-5 py-3.5 text-left"
 									>
-										<span
-											className="flex size-10 shrink-0 items-center justify-center rounded-full text-white"
-											style={{ backgroundColor: color }}
-										>
-											<CategoryIcon icon={icon} className="size-5" />
-										</span>
+										<AssetImage
+											type={acc.type}
+											bankName={acc.bank_name}
+											name={acc.name}
+											icon={acc.icon}
+											color={acc.color}
+											size="md"
+										/>
 										<div className="min-w-0 flex-1">
 											<div className="flex items-center gap-1.5">
 												<p className="truncate font-medium">{acc.name}</p>
@@ -530,10 +527,6 @@ function NonLiquidTab({
 					</div>
 					<div className="divide-y divide-border bg-surface">
 						{items.map((asset) => {
-							const icon =
-								asset.icon ?? ASSET_TYPE_ICONS[asset.type] ?? 'briefcase';
-							const color =
-								asset.color ?? ASSET_TYPE_COLORS[asset.type] ?? '#64748b';
 							return (
 								<button
 									key={asset.id}
@@ -541,12 +534,14 @@ function NonLiquidTab({
 									onClick={() => onSelect(asset)}
 									className="flex w-full items-center gap-3 px-5 py-3.5 text-left transition-colors hover:bg-muted/40"
 								>
-									<span
-										className="flex size-10 shrink-0 items-center justify-center rounded-full text-white"
-										style={{ backgroundColor: color }}
-									>
-										<CategoryIcon icon={icon} className="size-5" />
-									</span>
+									<AssetImage
+										type={asset.type}
+										bankName={asset.bank_name}
+										name={asset.name}
+										icon={asset.icon}
+										color={asset.color}
+										size="md"
+									/>
 									<div className="min-w-0 flex-1">
 										<div className="flex flex-wrap items-center gap-1.5">
 											<p className="truncate font-medium">{asset.name}</p>

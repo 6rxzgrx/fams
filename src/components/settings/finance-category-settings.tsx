@@ -107,7 +107,7 @@ export function FinanceCategorySettings() {
 	return (
 		<div className="space-y-4">
 			<header className="flex items-start justify-between gap-3">
-				<div>
+				<div className="min-w-0">
 					<h2 className="text-[20px] font-semibold leading-tight tracking-tight lg:text-[24px]">
 						Kategori
 					</h2>
@@ -119,10 +119,11 @@ export function FinanceCategorySettings() {
 					onClick={() => setCreateDefaults({ type: activeType, parent_id: '' })}
 					variant="accent"
 					size="pill"
-					className="lg:rounded-md lg:px-4"
+					className="shrink-0 lg:rounded-md lg:px-4"
 				>
 					<Plus className="size-4" strokeWidth={2.5} aria-hidden="true" />
-					Tambah Kategori
+					<span className="hidden sm:inline">Tambah Kategori</span>
+					<span className="sm:hidden">Tambah</span>
 				</Button>
 			</header>
 

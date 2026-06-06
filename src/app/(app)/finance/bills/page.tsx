@@ -46,7 +46,7 @@ import { MoneyInput } from '@/components/finance/money-input';
 import { MonthPicker } from '@/components/finance/month-picker';
 import { StatusChip } from '@/components/finance/status-chip';
 import { PageContainer } from '@/components/layout/page-container';
-import { MobileBackButton } from '@/components/nav/mobile-back-button';
+import { PageHeader } from '@/components/layout/page-header';
 import {
 	useBills,
 	useBillPayments,
@@ -58,6 +58,7 @@ import {
 import { useCategories } from '@/hooks/use-categories';
 import { formatMoney } from '@/lib/money';
 import { cn } from '@/lib/utils';
+import { getBillStatus, type BillStatus } from '@/domain/bills';
 import type { Bill, BillPayment, CreateBillInput } from '@/domain/types';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -97,29 +98,6 @@ function getBillColor(name: string): string {
 		hash |= 0;
 	}
 	return BILL_COLORS[Math.abs(hash) % BILL_COLORS.length];
-}
-
-type BillStatus = 'paid' | 'unpaid' | 'due-soon' | 'overdue';
-
-function getBillStatus(
-	bill: Bill,
-	payments: BillPayment[],
-	month: string,
-): BillStatus {
-	const isPaid = payments.some(
-		(p) => p.bill_id === bill.id && p.paid_at.startsWith(month),
-	);
-	if (isPaid) return 'paid';
-
-	const today = new Date();
-	today.setHours(0, 0, 0, 0);
-	const due = new Date(bill.due_date);
-	due.setHours(0, 0, 0, 0);
-	const diffDays = Math.ceil((due.getTime() - today.getTime()) / 86_400_000);
-
-	if (diffDays < 0) return 'overdue';
-	if (diffDays <= 7) return 'due-soon';
-	return 'unpaid';
 }
 
 function formatDueDate(dateStr: string): string {
@@ -192,70 +170,74 @@ function BillRow({
 	const color = getBillColor(bill.name);
 	const initial = bill.name.charAt(0).toUpperCase();
 
+	const menu = (
+		<DropdownMenu>
+			<DropdownMenuTrigger asChild>
+				<Button variant="ghost" size="icon" className="size-8 shrink-0">
+					<MoreVertical className="size-4" aria-hidden="true" />
+					<span className="sr-only">Opsi</span>
+				</Button>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="end">
+				<DropdownMenuItem onClick={() => onEdit(bill)}>
+					<Pencil className="mr-2 size-4" />
+					Edit
+				</DropdownMenuItem>
+				<DropdownMenuItem onClick={() => onDuplicate(bill)}>
+					<Copy className="mr-2 size-4" />
+					Duplikat
+				</DropdownMenuItem>
+				<DropdownMenuItem
+					className="text-destructive focus:text-destructive"
+					onClick={() => onDelete(bill)}
+				>
+					<Trash2 className="mr-2 size-4" />
+					Hapus
+				</DropdownMenuItem>
+			</DropdownMenuContent>
+		</DropdownMenu>
+	);
+
 	return (
-		<div className="flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-muted/30">
-			{/* Avatar */}
-			<span
-				className="flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
-				style={{ backgroundColor: color }}
-			>
-				{initial}
-			</span>
+		<div className="px-5 py-3.5 transition-colors hover:bg-muted/30">
+			{/* Top: avatar + name/due + amount */}
+			<div className="flex items-start gap-3">
+				<span
+					className="flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
+					style={{ backgroundColor: color }}
+				>
+					{initial}
+				</span>
 
-			{/* Info */}
-			<div className="min-w-0 flex-1">
-				<p className="truncate font-medium">{bill.name}</p>
-				<p className="mt-0.5 text-xs text-muted-foreground">
-					Jatuh tempo {formatDueDate(bill.due_date)}
-				</p>
-			</div>
+				<div className="min-w-0 flex-1">
+					<p className="font-medium leading-snug break-words">{bill.name}</p>
+					<p className="mt-0.5 text-xs text-muted-foreground">
+						Jatuh tempo {formatDueDate(bill.due_date)}
+					</p>
+				</div>
 
-			{/* Amount + status */}
-			<div className="flex shrink-0 flex-col items-end gap-1.5">
 				<MoneyDisplay
 					amount={parseInt(bill.amount, 10)}
-					className="text-sm font-semibold tabular-nums"
+					className="shrink-0 text-[15px] font-bold tabular-nums"
 				/>
-				<StatusChip status={status} />
 			</div>
 
-			{/* Actions */}
-			<div className="flex shrink-0 items-center gap-1">
-				{status !== 'paid' && (
-					<Button
-						size="sm"
-						variant="accent"
-						className="h-8 px-3 text-xs"
-						onClick={() => onPay(bill)}
-					>
-						Bayar
-					</Button>
-				)}
-				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
-						<Button variant="ghost" size="icon" className="size-8">
-							<MoreVertical className="size-4" aria-hidden="true" />
-							<span className="sr-only">Opsi</span>
-						</Button>
-					</DropdownMenuTrigger>
-					<DropdownMenuContent align="end">
-						<DropdownMenuItem onClick={() => onEdit(bill)}>
-							<Pencil className="mr-2 size-4" />
-							Edit
-						</DropdownMenuItem>
-						<DropdownMenuItem onClick={() => onDuplicate(bill)}>
-							<Copy className="mr-2 size-4" />
-							Duplikat
-						</DropdownMenuItem>
-						<DropdownMenuItem
-							className="text-destructive focus:text-destructive"
-							onClick={() => onDelete(bill)}
+			{/* Bottom: status chip + actions, aligned under the text column */}
+			<div className="mt-2.5 flex items-center justify-between gap-2 pl-[52px]">
+				<StatusChip status={status} />
+				<div className="flex shrink-0 items-center gap-1">
+					{status !== 'paid' && (
+						<Button
+							size="sm"
+							variant="accent"
+							className="h-8 px-3.5 text-xs"
+							onClick={() => onPay(bill)}
 						>
-							<Trash2 className="mr-2 size-4" />
-							Hapus
-						</DropdownMenuItem>
-					</DropdownMenuContent>
-				</DropdownMenu>
+							Bayar
+						</Button>
+					)}
+					{menu}
+				</div>
 			</div>
 		</div>
 	);
@@ -876,42 +858,32 @@ export default function BillsPage() {
 	const hasAnyBills = bills.length > 0;
 
 	return (
-		<PageContainer bleed>
-			{/* Header */}
-			<header className="flex items-end justify-between gap-3 px-5 py-4 lg:px-0 lg:py-0 lg:pb-6">
-				<div className="min-w-0">
-					<MobileBackButton />
-					<h1 className="truncate text-[22px] font-semibold leading-tight tracking-tight lg:text-[28px]">
-						Tagihan
-					</h1>
-					<p className="mt-0.5 hidden text-[13px] text-muted-foreground lg:block">
-						Listrik, sewa, langganan, dan tagihan rutin keluarga.
-					</p>
-				</div>
-				<div className="flex shrink-0 items-center gap-2">
-					<MonthPicker value={month} onChange={setMonth} />
-					<Button
-						variant="accent"
-						onClick={openAdd}
-						className="hidden lg:inline-flex"
-					>
-						<Plus className="size-4" strokeWidth={2.5} aria-hidden="true" />
-						Tambah Tagihan
-					</Button>
-				</div>
-			</header>
-
-			{/* Mobile add button */}
-			<div className="mb-3 flex justify-end px-5 lg:hidden">
-				<Button variant="accent" size="sm" onClick={openAdd} className="gap-1.5">
-					<Plus className="size-4" strokeWidth={2.5} />
-					Tambah Tagihan
-				</Button>
-			</div>
-
+		<>
+			<PageHeader
+				variant="sub"
+				title="Tagihan"
+				subtitle="Listrik, sewa, langganan, dan tagihan rutin keluarga."
+				backHref="/finance/dashboard"
+				crumbs={[
+					{ href: '/finance/dashboard', label: 'Keuangan' },
+					{ href: '/finance/bills', label: 'Tagihan' },
+				]}
+				monthPicker={<MonthPicker value={month} onChange={setMonth} fullWidth />}
+				action={
+					/* desktop only: month picker + add (mobile shows it below the list card) */
+					<div className="hidden items-center gap-2 lg:flex">
+						<MonthPicker value={month} onChange={setMonth} />
+						<Button variant="accent" onClick={openAdd}>
+							<Plus className="size-4" strokeWidth={2.5} aria-hidden="true" />
+							Tambah Tagihan
+						</Button>
+					</div>
+				}
+			/>
+			<PageContainer bleed>
 			{/* Loading */}
 			{isLoading && (
-				<div className="px-5 lg:px-0">
+				<div className="px-5 pt-4 lg:px-0 lg:pt-6">
 					{/* 4 summary cards */}
 					<div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
 						{Array.from({ length: 4 }).map((_, i) => (
@@ -987,7 +959,7 @@ export default function BillsPage() {
 
 			{/* Content */}
 			{!isLoading && !billsError && hasAnyBills && (
-				<div className="px-5 lg:px-0">
+				<div className="px-5 pt-4 lg:px-0 lg:pt-6">
 					{/* Two-column layout: current (left) + next month (right) */}
 					<div className="gap-5 lg:flex lg:items-start">
 						{/* Left: summary cards + bills list */}
@@ -1018,6 +990,16 @@ export default function BillsPage() {
 									accent="#ef4444"
 								/>
 							</div>
+
+							{/* Mobile: Tambah Tagihan above the bills listing (desktop has it in the header) */}
+							<Button
+								variant="accent"
+								onClick={openAdd}
+								className="w-full gap-1.5 lg:hidden"
+							>
+								<Plus className="size-4" strokeWidth={2.5} aria-hidden="true" />
+								Tambah Tagihan
+							</Button>
 
 							{/* Bills list for selected month */}
 							<div className="overflow-hidden rounded-xl border border-border bg-surface">
@@ -1071,6 +1053,7 @@ export default function BillsPage() {
 									</>
 								)}
 							</div>
+
 						</div>
 
 						{/* Right: next month preview */}
@@ -1108,5 +1091,6 @@ export default function BillsPage() {
 				onDeleted={handleDeleted}
 			/>
 		</PageContainer>
+		</>
 	);
 }

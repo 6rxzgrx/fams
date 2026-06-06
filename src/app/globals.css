@@ -172,6 +172,10 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   letter-spacing: -0.005em;
+  /* Safety net: a stray wide child should never make the whole page scroll
+     sideways on mobile. Intentional horizontal scroll uses inner
+     overflow-x-auto containers, which are unaffected by this. */
+  overflow-x: hidden;
 }
 
 h1, h2, h3, h4, h5, h6 {

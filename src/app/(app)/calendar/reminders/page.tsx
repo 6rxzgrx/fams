@@ -19,6 +19,7 @@ import { ListSkeleton } from '@/components/sections/loading-state'
 import { ErrorState } from '@/components/sections/error-state'
 import { cn } from '@/lib/utils'
 import { PageContainer } from '@/components/layout/page-container'
+import { PageHeader } from '@/components/layout/page-header'
 import {
   useReminders,
   useCreateReminder,
@@ -375,18 +376,17 @@ export default function RemindersPage() {
   }
 
   return (
-    <PageContainer bleed>
-      {/* Header */}
-      <header className="sticky top-0 z-10 bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70 lg:static lg:bg-transparent lg:backdrop-blur-none">
-        <div className="flex items-center justify-between px-5 py-4 lg:px-0 lg:py-0 lg:pb-8">
-          <div>
-            <h1 className="text-[22px] font-semibold leading-tight tracking-tight lg:text-[28px]">
-              Pengingat
-            </h1>
-            <p className="hidden text-[13px] text-muted-foreground lg:block">
-              Jadwal dan pengingat keluarga, sinkron ke Google Calendar.
-            </p>
-          </div>
+    <>
+      <PageHeader
+        variant="sub"
+        title="Pengingat"
+        subtitle="Jadwal dan pengingat keluarga, sinkron ke Google Calendar."
+        backHref="/calendar"
+        crumbs={[
+          { href: '/calendar', label: 'Kalender' },
+          { href: '/calendar/reminders', label: 'Pengingat' },
+        ]}
+        action={
           <Button
             variant="accent"
             onClick={() => setAddOpen(true)}
@@ -396,9 +396,9 @@ export default function RemindersPage() {
           >
             <Plus className="size-5" strokeWidth={2.5} />
           </Button>
-        </div>
-      </header>
-
+        }
+      />
+      <PageContainer bleed>
       <div className="px-5 pb-28 lg:px-0">
         {isLoading && <ListSkeleton count={4} />}
         {error && <ErrorState message={error} onRetry={() => mutate()} />}
@@ -486,6 +486,7 @@ export default function RemindersPage() {
           </Button>
         </DialogContent>
       </Dialog>
-    </PageContainer>
+      </PageContainer>
+    </>
   )
 }

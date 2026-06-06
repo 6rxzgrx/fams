@@ -4,8 +4,8 @@ import { Bell, AlertTriangle, CalendarClock } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { id as localeId } from 'date-fns/locale'
 import { Button } from '@/components/ui/button'
-import { MobileBackButton } from '@/components/nav/mobile-back-button'
 import { PageContainer } from '@/components/layout/page-container'
+import { PageHeader } from '@/components/layout/page-header'
 import { usePushSubscription } from '@/hooks/use-push-subscription'
 import { useNotificationLog } from '@/hooks/use-notification-log'
 import type { NotificationLog } from '@/domain/types'
@@ -35,19 +35,14 @@ export default function NotificationsFeedPage() {
   const { logs, isLoading: logsLoading } = useNotificationLog()
 
   return (
-    <PageContainer>
-      <header className="flex items-end justify-between gap-3 py-4 lg:pb-6 lg:pt-0">
-        <div className="min-w-0">
-          <MobileBackButton />
-          <h1 className="truncate text-[22px] font-semibold leading-tight tracking-tight lg:text-[28px]">
-            Notifikasi
-          </h1>
-          <p className="mt-0.5 hidden text-[13px] text-muted-foreground lg:block">
-            Pengingat aktif dan tagihan mendatang.
-          </p>
-        </div>
-      </header>
-
+    <>
+      <PageHeader
+        variant="root"
+        showAvatar
+        title="Notifikasi"
+        subtitle="Pengingat aktif dan tagihan mendatang."
+      />
+      <PageContainer underHeader>
       <div className="space-y-4 pb-24 lg:pb-0">
         {isSupported && (
           <div className="flex items-center justify-between rounded-xl border border-border bg-surface p-4">
@@ -96,6 +91,7 @@ export default function NotificationsFeedPage() {
           )}
         </div>
       </div>
-    </PageContainer>
+      </PageContainer>
+    </>
   )
 }

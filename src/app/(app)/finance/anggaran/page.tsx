@@ -50,7 +50,7 @@ import {
 	type ChartConfig,
 } from '@/components/ui/chart';
 import { PageContainer } from '@/components/layout/page-container';
-import { MobileBackButton } from '@/components/nav/mobile-back-button';
+import { PageHeader } from '@/components/layout/page-header';
 import { formatMoney, formatMoneyCompact } from '@/lib/money';
 import { cn } from '@/lib/utils';
 import {
@@ -613,13 +613,13 @@ function BudgetTypeSection({
 							}}
 						/>
 					</div>
-					<div className="flex justify-between mt-1.5">
-						<span className="text-[11px] text-muted-foreground tabular-nums">
+					<div className="flex justify-between gap-2 mt-1.5">
+						<span className="truncate text-[11px] text-muted-foreground tabular-nums">
 							{txLoading ? '…' : `${formatMoney(typeSpent)} terpakai`}
 						</span>
 						<span
 							className={cn(
-								'text-[11px] font-medium tabular-nums',
+								'shrink-0 text-[11px] font-medium tabular-nums',
 								isOver ? 'text-[#FB7185]' : 'text-muted-foreground',
 							)}
 						>
@@ -893,36 +893,37 @@ export default function AnggaranPage() {
 	).length;
 
 	return (
-		<PageContainer bleed>
-			{/* Header */}
-			<header className="flex items-end justify-between gap-3 px-5 py-4 lg:px-0 lg:py-0 lg:pb-6">
-				<div className="min-w-0">
-					<MobileBackButton />
-					<h1 className="truncate text-[22px] font-semibold leading-tight tracking-tight lg:text-[28px]">
-						Anggaran
-					</h1>
-					<p className="mt-0.5 hidden text-[13px] text-muted-foreground lg:block">
-						When everything is planned, success is sure to follow.
-					</p>
-				</div>
-				<div className="flex shrink-0 items-center gap-2">
-					<MonthPicker value={month} onChange={setMonth} />
-					<Button
-						variant="accent"
-						size="sm"
-						onClick={openSetup}
-						className="shrink-0 gap-1.5"
-					>
-						<SlidersHorizontal className="size-3.5" />
-						<span className="hidden sm:inline">Ubah Anggaran</span>
-						<span className="sm:hidden">Ubah</span>
-					</Button>
-				</div>
-			</header>
-
+		<>
+			<PageHeader
+				variant="sub"
+				title="Anggaran"
+				subtitle="When everything is planned, success is sure to follow."
+				backHref="/finance/dashboard"
+				crumbs={[
+					{ href: '/finance/dashboard', label: 'Keuangan' },
+					{ href: '/finance/anggaran', label: 'Anggaran' },
+				]}
+				monthPicker={<MonthPicker value={month} onChange={setMonth} fullWidth />}
+				action={
+					/* desktop only: month picker + edit budget (mobile shows it below the hero card) */
+					<div className="hidden items-center gap-2 lg:flex">
+						<MonthPicker value={month} onChange={setMonth} />
+						<Button
+							variant="accent"
+							size="sm"
+							onClick={openSetup}
+							className="shrink-0 gap-1.5"
+						>
+							<SlidersHorizontal className="size-3.5" />
+							Ubah Anggaran
+						</Button>
+					</div>
+				}
+			/>
+			<PageContainer bleed>
 			{/* Loading */}
 			{isLoading && (
-				<div className="space-y-3 px-5 lg:px-0">
+				<div className="space-y-3 px-5 pt-4 lg:px-0 lg:pt-6">
 					{/* Hero: SisaCard | Chart */}
 					<div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1.5fr]">
 						<Skeleton className="h-64 w-full rounded-2xl" />
@@ -949,7 +950,7 @@ export default function AnggaranPage() {
 			)}
 
 			{!isLoading && (
-				<div className="space-y-4 px-5 lg:px-0">
+				<div className="space-y-4 px-5 pt-4 lg:px-0 lg:pt-6">
 					{/* Empty state */}
 					{!totalBudget && (
 						<EmptyState
@@ -984,6 +985,18 @@ export default function AnggaranPage() {
 								dailyAllowance={txLoading ? 0 : dailyAllowance}
 							/>
 						</div>
+					)}
+
+					{/* Mobile: Ubah Anggaran below the hero card (desktop has it in the header) */}
+					{totalBudget && (
+						<Button
+							variant="accent"
+							onClick={openSetup}
+							className="w-full gap-1.5 lg:hidden"
+						>
+							<SlidersHorizontal className="size-4" strokeWidth={2.25} />
+							Ubah Anggaran
+						</Button>
 					)}
 
 					{/* Budget type sections */}
@@ -1030,6 +1043,7 @@ export default function AnggaranPage() {
 				onSaved={() => mutate()}
 			/>
 		</PageContainer>
+		</>
 	);
 }
 

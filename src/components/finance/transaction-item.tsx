@@ -12,6 +12,7 @@ import {
 import type { Transaction, TransactionCategory, Account } from '@/domain/types'
 import { formatCategoryLabel } from '@/domain/categories'
 import { MoneyDisplay } from './money-display'
+import { IconTile } from './icon-tile'
 import { TX_TYPE_LABELS } from '@/domain/transactions'
 import { cn } from '@/lib/utils'
 
@@ -57,25 +58,29 @@ export function TransactionItem({ transaction, categories, accounts, onClick, on
       <button
         type="button"
         onClick={onClick}
-        className="flex flex-1 items-center gap-3 py-3 text-left focus-visible:outline-none"
+        className="flex min-w-0 flex-1 items-center gap-3 py-3 text-left focus-visible:outline-none"
       >
-        <span
-          className={cn(
-            'inline-flex size-[38px] shrink-0 items-center justify-center rounded-[12px]',
-            !catColor && meta.tone,
-          )}
-          style={catColor ? { backgroundColor: iconBg } : undefined}
-          aria-hidden="true"
-        >
-          <Icon
-            className="size-[17px]"
-            strokeWidth={1.75}
-            style={iconColor ? { color: iconColor } : undefined}
-          />
-        </span>
+        {category?.icon ? (
+          <IconTile iconKey={category.icon} color={catColor} size="md" className="size-[38px]" />
+        ) : (
+          <span
+            className={cn(
+              'inline-flex size-[38px] shrink-0 items-center justify-center rounded-xl',
+              !catColor && meta.tone,
+            )}
+            style={catColor ? { backgroundColor: iconBg } : undefined}
+            aria-hidden="true"
+          >
+            <Icon
+              className="size-[17px]"
+              strokeWidth={1.75}
+              style={iconColor ? { color: iconColor } : undefined}
+            />
+          </span>
+        )}
         <div className="min-w-0 flex-1">
           <p className="truncate text-[13.5px] font-semibold text-foreground">{transaction.description}</p>
-          <p className="mt-0.5 text-[11px] font-medium text-muted-foreground">
+          <p className="mt-0.5 truncate text-[11px] font-medium text-muted-foreground">
             {category ? formatCategoryLabel(category, categories) : TX_TYPE_LABELS[transaction.type]}
             {account && <>{' · '}{account.name}</>}
           </p>

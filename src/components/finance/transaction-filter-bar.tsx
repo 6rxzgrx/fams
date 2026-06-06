@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
+import { AccountOption } from '@/components/finance/account-option'
 import type { TransactionCategory, Account } from '@/domain/types'
 
 export interface TransactionFilters {
@@ -208,14 +209,10 @@ export function TransactionFilterBar({
             {accounts.map((acc) => (
               <DropdownMenuItem key={acc.id} onClick={() => setFilter('accountId', acc.id)}>
                 <Check
-                  className={cn('mr-2 size-4', filters.accountId === acc.id ? 'opacity-100' : 'opacity-0')}
+                  className={cn('mr-2 size-4 shrink-0', filters.accountId === acc.id ? 'opacity-100' : 'opacity-0')}
                   strokeWidth={2.5}
                 />
-                <span
-                  className="mr-2 inline-block size-2.5 shrink-0 rounded-full"
-                  style={{ backgroundColor: acc.color || '#1e40af' }}
-                />
-                {acc.name}
+                <AccountOption account={acc} />
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>

@@ -13,6 +13,7 @@ import {
 	EyeOff,
 	Loader2,
 	RefreshCw,
+	Settings2,
 	TrendingDown,
 	TrendingUp,
 } from 'lucide-react';
@@ -30,7 +31,7 @@ import { ErrorState } from '@/components/sections/error-state';
 import { MoneyDisplay } from '@/components/finance/money-display';
 import { QuantityDisplay } from '@/components/finance/quantity-display';
 import { TransactionItem } from '@/components/finance/transaction-item';
-import { CategoryIcon } from '@/components/finance/category-icon';
+import { AssetImage } from '@/components/finance/asset-image';
 import {
 	buildRegistryDataLegacy,
 	type RegistryItem,
@@ -39,8 +40,8 @@ import {
 	AssetGrowthChart,
 	computeGrowthStats,
 } from '@/components/finance/asset-growth-chart';
-import { MobileBackButton } from '@/components/nav/mobile-back-button';
 import { PageContainer } from '@/components/layout/page-container';
+import { PageHeader } from '@/components/layout/page-header';
 import { useAccounts } from '@/hooks/use-accounts';
 import { useAssets } from '@/hooks/use-assets';
 import {
@@ -85,10 +86,10 @@ function AsetPageSkeleton() {
 		</div>
 	);
 	return (
-		<div className="space-y-2 px-5 lg:space-y-4 lg:px-0">
+		<div className="space-y-4 px-5 pt-4 lg:space-y-4 lg:px-0 lg:pt-6">
 			{/* Top grid: 2 summary cards + growth chart */}
-			<div className="grid grid-cols-1 gap-2 lg:grid-cols-[420px_1fr] lg:gap-4">
-				<div className="flex flex-col gap-2">
+			<div className="grid grid-cols-1 gap-3 lg:grid-cols-[420px_1fr] lg:gap-4">
+				<div className="flex flex-col gap-3">
 					<Skeleton className="h-[90px] w-full rounded-xl" />
 					<Skeleton className="h-[90px] w-full rounded-xl" />
 				</div>
@@ -199,36 +200,18 @@ export default function AsetPage() {
 	const avatarOverflow = Math.max(0, accounts.length - 3);
 
 	return (
-		<PageContainer bleed>
-			<header className="flex items-end justify-between gap-3 px-5 py-4 lg:px-0 lg:py-0 lg:pb-6">
-				<div className="min-w-0">
-					<MobileBackButton />
-					<h1 className="truncate text-[22px] font-semibold leading-tight tracking-tight lg:text-[28px]">
-						Aset Keluarga
-					</h1>
-					<p className="mt-0.5 hidden text-[13px] text-muted-foreground lg:block">
-						Assets are not just numbers on a spreadsheet — they are one step
-						towards financial freedom.
-					</p>
-				</div>
-				<div className="flex shrink-0 items-center gap-2">
-					<Button
-						asChild
-						type="button"
-						className="hidden h-10 items-center gap-2 rounded-md bg-accent px-4 text-[13px] font-semibold text-accent-foreground transition-opacity hover:opacity-90 lg:inline-flex"
-					>
-						<Link href="/settings/finance-setup/assets">
-							Kelola Aset
-							<ExternalLink
-								className="size-4"
-								strokeWidth={2.25}
-								aria-hidden="true"
-							/>
-						</Link>
-					</Button>
-				</div>
-			</header>
-
+		<>
+			<PageHeader
+				variant="sub"
+				title="Aset Keluarga"
+				subtitle="Assets are not just numbers on a spreadsheet — they are one step towards financial freedom."
+				backHref="/finance/dashboard"
+				crumbs={[
+					{ href: '/finance/dashboard', label: 'Keuangan' },
+					{ href: '/finance/assets', label: 'Aset' },
+				]}
+			/>
+			<PageContainer bleed>
 			{isLoading && <AsetPageSkeleton />}
 			{error && <ErrorState message={error} onRetry={handleRetry} />}
 
@@ -246,11 +229,11 @@ export default function AsetPage() {
 			)}
 
 			{!isLoading && !error && hasItems && (
-				<div className="space-y-2 lg:space-y-4">
+				<div className="space-y-4 pt-4 lg:space-y-4 lg:pt-6">
 					{/* Top section: summary cards + growth chart */}
-					<div className="grid grid-cols-1 gap-2 lg:grid-cols-[420px_1fr] lg:gap-4">
+					<div className="grid grid-cols-1 gap-3 lg:grid-cols-[420px_1fr] lg:gap-4">
 						{/* Left column: two summary cards */}
-						<div className="flex flex-col gap-2">
+						<div className="flex flex-col gap-3">
 							{/* Total Saldo card */}
 							<div className="rounded-xl border border-border bg-surface p-4">
 								<p className="text-eyebrow text-muted-foreground">
@@ -479,6 +462,14 @@ export default function AsetPage() {
 						</div>
 					</div>
 
+					{/* Kelola Aset — above the asset listing (links to Finance Setup) */}
+					<Button asChild variant="accent" className="w-full gap-2">
+						<Link href="/settings/finance-setup/assets">
+							<Settings2 className="size-4" strokeWidth={2.25} aria-hidden="true" />
+							Kelola Aset
+						</Link>
+					</Button>
+
 					{/* Asset list sections */}
 					{Object.keys(liquidGroups).length > 0 && (
 						<div className="overflow-hidden rounded-xl border border-border bg-surface">
@@ -516,6 +507,7 @@ export default function AsetPage() {
 				</DialogContent>
 			</Dialog>
 		</PageContainer>
+		</>
 	);
 }
 
@@ -675,12 +667,14 @@ function AsetGroupSection({
 									onClick={() => onSelect(item)}
 									className="flex w-full items-center gap-3 px-5 py-3.5 text-left transition-colors hover:bg-muted/40"
 								>
-									<span
-										className="flex size-10 shrink-0 items-center justify-center rounded-full text-white"
-										style={{ backgroundColor: item.color }}
-									>
-										<CategoryIcon icon={item.icon} className="size-5" />
-									</span>
+									<AssetImage
+										type={item.raw.type}
+										bankName={item.raw.bank_name}
+										name={item.name}
+										icon={item.raw.icon}
+										color={item.color}
+										size="md"
+									/>
 									<div className="min-w-0 flex-1">
 										<div className="flex items-center gap-1.5">
 											<p className="truncate font-medium">{item.name}</p>
@@ -736,12 +730,14 @@ function AsetDetailDialog({
 		<div className="space-y-5">
 			<DialogHeader>
 				<div className="flex items-center gap-3">
-					<span
-						className="flex size-12 shrink-0 items-center justify-center rounded-2xl text-white"
-						style={{ backgroundColor: detail.color }}
-					>
-						<CategoryIcon icon={detail.icon} className="size-6" />
-					</span>
+					<AssetImage
+						type={detail.raw.type}
+						bankName={detail.raw.bank_name}
+						name={detail.name}
+						icon={detail.raw.icon}
+						color={detail.color}
+						size="lg"
+					/>
 					<div>
 						<DialogTitle className="text-left">{detail.name}</DialogTitle>
 						<p className="text-sm text-muted-foreground">{detail.typeLabel}</p>

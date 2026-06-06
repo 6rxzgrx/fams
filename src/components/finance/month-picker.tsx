@@ -7,6 +7,8 @@ interface MonthPickerProps {
   value: string // YYYY-MM
   onChange: (month: string) => void
   className?: string
+  /** Spread chevrons to the edges with a centered label — for the full-width mobile month bar. */
+  fullWidth?: boolean
 }
 
 function parseYM(ym: string): { year: number; month: number } {
@@ -23,7 +25,7 @@ const MONTH_NAMES = [
   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
 ]
 
-export function MonthPicker({ value, onChange, className }: MonthPickerProps) {
+export function MonthPicker({ value, onChange, className, fullWidth = false }: MonthPickerProps) {
   const { year, month } = parseYM(value)
 
   const nowYM = formatYM(new Date().getFullYear(), new Date().getMonth() + 1)
@@ -39,37 +41,47 @@ export function MonthPicker({ value, onChange, className }: MonthPickerProps) {
     else onChange(formatYM(year, month + 1))
   }
 
+  const chevron = (
+    dir: 'prev' | 'next',
+    onClick: () => void,
+    label: string,
+    Icon: typeof ChevronLeft,
+  ) => (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      className={cn(
+        'flex items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-95',
+        fullWidth ? 'size-9' : 'size-7',
+      )}
+    >
+      <Icon className={fullWidth ? 'size-5' : 'size-4'} strokeWidth={2.5} />
+    </button>
+  )
+
   return (
-    <div className={cn('flex items-center gap-1', className)}>
-      <button
-        type="button"
-        onClick={prev}
-        aria-label="Bulan sebelumnya"
-        className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-      >
-        <ChevronLeft className="size-4" strokeWidth={2.5} />
-      </button>
+    <div
+      className={cn(
+        'flex items-center',
+        fullWidth ? 'w-full justify-between gap-1' : 'gap-1',
+        className,
+      )}
+    >
+      {chevron('prev', prev, 'Bulan sebelumnya', ChevronLeft)}
       <button
         type="button"
         onClick={() => !isCurrentMonth && onChange(nowYM)}
         className={cn(
-          'min-w-[130px] rounded-md px-2.5 py-1 text-center text-sm font-semibold transition-colors',
-          isCurrentMonth
-            ? 'text-foreground'
-            : 'text-accent hover:bg-accent-soft',
+          'rounded-md text-center font-semibold transition-colors',
+          fullWidth ? 'flex-1 py-1.5 text-[15px]' : 'min-w-[130px] px-2.5 py-1 text-sm',
+          isCurrentMonth ? 'text-foreground' : 'text-accent hover:bg-accent-soft',
         )}
         title={isCurrentMonth ? '' : 'Kembali ke bulan ini'}
       >
         {MONTH_NAMES[month - 1]} {year}
       </button>
-      <button
-        type="button"
-        onClick={next}
-        aria-label="Bulan berikutnya"
-        className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-      >
-        <ChevronRight className="size-4" strokeWidth={2.5} />
-      </button>
+      {chevron('next', next, 'Bulan berikutnya', ChevronRight)}
     </div>
   )
 }

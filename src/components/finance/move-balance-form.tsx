@@ -10,10 +10,10 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from '@/components/ui/select'
 import { MoneyInput } from '@/components/finance/money-input'
 import { MoneyDisplay } from '@/components/finance/money-display'
+import { AccountOption } from '@/components/finance/account-option'
 import type { Asset } from '@/domain/types'
 
 interface MoveBalanceFormProps {
@@ -36,6 +36,7 @@ export function MoveBalanceForm({ accounts, onSubmit, onCancel, loading }: MoveB
   const [description, setDescription] = useState('')
 
   const fromAccount = accounts.find((a) => a.id === fromId)
+  const toAccount = accounts.find((a) => a.id === toId)
   const fromBalance = fromAccount ? parseInt(fromAccount.current_balance, 10) || 0 : 0
 
   const toOptions = accounts.filter((a) => a.id !== fromId)
@@ -55,17 +56,23 @@ export function MoveBalanceForm({ accounts, onSubmit, onCancel, loading }: MoveB
         <Label>Dari Akun</Label>
         <Select value={fromId} onValueChange={(v) => { setFromId(v); if (toId === v) setToId('') }}>
           <SelectTrigger>
-            <SelectValue placeholder="Pilih akun asal" />
+            {fromAccount ? (
+              <AccountOption account={fromAccount} />
+            ) : (
+              <span className="text-muted-foreground">Pilih akun asal</span>
+            )}
           </SelectTrigger>
           <SelectContent>
             {accounts.map((acc) => (
               <SelectItem key={acc.id} value={acc.id}>
-                <span className="flex items-center justify-between gap-4 w-full">
-                  <span>{acc.name}</span>
-                  <span className="text-muted-foreground tabular-nums text-xs">
-                    Rp {(parseInt(acc.current_balance, 10) || 0).toLocaleString('id-ID')}
-                  </span>
-                </span>
+                <AccountOption
+                  account={acc}
+                  trailing={
+                    <span className="shrink-0 text-muted-foreground tabular-nums text-xs">
+                      Rp {(parseInt(acc.current_balance, 10) || 0).toLocaleString('id-ID')}
+                    </span>
+                  }
+                />
               </SelectItem>
             ))}
           </SelectContent>
@@ -85,12 +92,16 @@ export function MoveBalanceForm({ accounts, onSubmit, onCancel, loading }: MoveB
         <Label>Ke Akun</Label>
         <Select value={toId} onValueChange={setToId} disabled={!fromId}>
           <SelectTrigger>
-            <SelectValue placeholder="Pilih akun tujuan" />
+            {toAccount ? (
+              <AccountOption account={toAccount} />
+            ) : (
+              <span className="text-muted-foreground">Pilih akun tujuan</span>
+            )}
           </SelectTrigger>
           <SelectContent>
             {toOptions.map((acc) => (
               <SelectItem key={acc.id} value={acc.id}>
-                {acc.name}
+                <AccountOption account={acc} />
               </SelectItem>
             ))}
           </SelectContent>

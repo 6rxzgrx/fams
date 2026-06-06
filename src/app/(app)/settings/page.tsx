@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PageContainer } from '@/components/layout/page-container'
+import { PageHeader } from '@/components/layout/page-header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { cn } from '@/lib/utils'
@@ -42,16 +43,14 @@ export default function SettingsPage() {
   const { data: session } = useSession()
 
   return (
-    <PageContainer className="space-y-5 lg:space-y-6">
-      <header>
-        <h1 className="text-[22px] font-semibold leading-tight tracking-tight lg:text-[28px]">
-          Pengaturan
-        </h1>
-        <p className="hidden text-[13px] text-muted-foreground lg:block">
-          Akun, anggota, integrasi, dan riwayat aktivitas keluarga.
-        </p>
-      </header>
-
+    <>
+      <PageHeader
+        variant="root"
+        showAvatar
+        title="Pengaturan"
+        subtitle="Akun, anggota, integrasi, dan riwayat aktivitas keluarga."
+      />
+      <PageContainer underHeader className="space-y-5 lg:space-y-6">
       {/* Profile */}
       <Card>
         <CardHeader>
@@ -153,6 +152,7 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
-    </PageContainer>
+      </PageContainer>
+    </>
   )
 }

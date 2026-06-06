@@ -10,14 +10,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select'
 import { MoneyInput } from '@/components/finance/money-input'
 import { TransactionCategoryPicker } from '@/components/finance/transaction-category-picker'
-import { CategoryIcon } from '@/components/finance/category-icon'
+import { AccountOption } from '@/components/finance/account-option'
 import { useAccounts } from '@/hooks/use-accounts'
 import { useCategories } from '@/hooks/use-categories'
 import { useFavoriteAccountIds } from '@/hooks/use-favorite-account-ids'
-import { ASSET_TYPE_ICONS, ASSET_TYPE_COLORS } from '@/domain/constants'
 import { format } from 'date-fns'
 
 interface TransactionFormProps {
@@ -141,37 +140,22 @@ export function TransactionForm({ defaultValues, onSubmit, onCancel, loading, ca
                 {(() => {
                   const acc = accounts.find((a) => a.id === field.value)
                   if (!acc) return <span className="text-muted-foreground">Pilih akun</span>
-                  const icon = acc.icon ?? ASSET_TYPE_ICONS[acc.type] ?? 'wallet'
-                  const color = acc.color ?? ASSET_TYPE_COLORS[acc.type] ?? '#64748b'
-                  return (
-                    <div className="flex items-center gap-2">
-                      <span className="flex size-5 shrink-0 items-center justify-center rounded-full text-white" style={{ backgroundColor: color }}>
-                        <CategoryIcon icon={icon} className="size-3" />
-                      </span>
-                      <span>{acc.name}</span>
-                    </div>
-                  )
+                  return <AccountOption account={acc} />
                 })()}
               </SelectTrigger>
               <SelectContent>
-                {sortedAccounts.map((acc) => {
-                  const icon = acc.icon ?? ASSET_TYPE_ICONS[acc.type] ?? 'wallet'
-                  const color = acc.color ?? ASSET_TYPE_COLORS[acc.type] ?? '#64748b'
-                  const starred = isFavorite(acc.id)
-                  return (
-                    <SelectItem key={acc.id} value={acc.id}>
-                      <div className="flex items-center gap-2">
-                        <span className="flex size-5 shrink-0 items-center justify-center rounded-full text-white" style={{ backgroundColor: color }}>
-                          <CategoryIcon icon={icon} className="size-3" />
-                        </span>
-                        <span>{acc.name}</span>
-                        {starred && (
-                          <Star className="size-3 fill-accent text-accent" strokeWidth={2} aria-hidden="true" />
-                        )}
-                      </div>
-                    </SelectItem>
-                  )
-                })}
+                {sortedAccounts.map((acc) => (
+                  <SelectItem key={acc.id} value={acc.id}>
+                    <AccountOption
+                      account={acc}
+                      trailing={
+                        isFavorite(acc.id) ? (
+                          <Star className="size-3 shrink-0 fill-accent text-accent" strokeWidth={2} aria-hidden="true" />
+                        ) : undefined
+                      }
+                    />
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           )}

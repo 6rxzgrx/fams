@@ -3,12 +3,15 @@ import type { LucideIcon } from 'lucide-react'
 import { ArrowUpRight, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PageContainer } from '@/components/layout/page-container'
+import { PageHeader } from '@/components/layout/page-header'
+import { IconTile } from '@/components/finance/icon-tile'
 
 type SubItem = {
   href: string
   label: string
   description?: string
   icon?: LucideIcon
+  color?: string
   status?: 'ready' | 'soon' | 'planned'
 }
 
@@ -20,6 +23,14 @@ type Props = {
   description?: string
   items?: SubItem[]
   children?: React.ReactNode
+  /** Header style — `root` (top-level) or `sub` (centered + back). Defaults to `sub`. */
+  variant?: 'root' | 'sub'
+  /** Back target for the `sub` header. */
+  backHref?: string
+  /** Desktop breadcrumb trail. */
+  crumbs?: { href: string; label: string }[]
+  /** `root` + mobile: show avatar + notification bell. */
+  showAvatar?: boolean
 }
 
 const STATUS_LABEL: Record<NonNullable<Props['status']>, string> = {
@@ -42,15 +53,22 @@ export function PageSkeleton({
   description,
   items,
   children,
+  variant = 'sub',
+  backHref,
+  crumbs,
+  showAvatar,
 }: Props) {
   return (
-    <PageContainer className="space-y-6">
-      <header className="space-y-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-[22px] font-semibold leading-tight tracking-tight lg:text-[28px]">
-            {title}
-          </h1>
-          {status && (
+    <>
+      <PageHeader
+        variant={variant}
+        title={title}
+        subtitle={subtitle}
+        backHref={backHref}
+        crumbs={crumbs}
+        showAvatar={showAvatar}
+        action={
+          status ? (
             <span
               className={cn(
                 'inline-flex items-center rounded-pill px-2.5 py-0.5 text-[11px] font-semibold',
@@ -59,14 +77,11 @@ export function PageSkeleton({
             >
               {STATUS_LABEL[status]}
             </span>
-          )}
-        </div>
-        {subtitle && (
-          <p className="text-[13px] text-muted-foreground lg:text-sm">{subtitle}</p>
-        )}
-      </header>
-
-      {description && (
+          ) : undefined
+        }
+      />
+      <PageContainer underHeader className="space-y-6">
+        {description && (
         <section className="rounded-lg border border-border bg-surface p-5 lg:p-6">
           <div className="flex items-start gap-3">
             <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-pill bg-accent-soft text-accent">
@@ -88,13 +103,7 @@ export function PageSkeleton({
                 'transition-colors hover:border-border-strong hover:bg-muted/40',
               )}
             >
-              <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-pill bg-muted text-foreground">
-                {item.icon ? (
-                  <item.icon className="size-5" strokeWidth={2} aria-hidden="true" />
-                ) : (
-                  <Sparkles className="size-5" strokeWidth={2} aria-hidden="true" />
-                )}
-              </span>
+              <IconTile icon={item.icon ?? Sparkles} color={item.color ?? '#6366F1'} size="md" />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-semibold">{item.label}</p>
@@ -125,7 +134,8 @@ export function PageSkeleton({
         </section>
       )}
 
-      {children}
-    </PageContainer>
+        {children}
+      </PageContainer>
+    </>
   )
 }

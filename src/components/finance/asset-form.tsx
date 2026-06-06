@@ -14,10 +14,10 @@ import {
   ASSET_TYPE_COLORS,
   ASSET_TYPE_SATUAN,
   SATUAN_OPTIONS,
-  CATEGORY_ICON_OPTIONS,
-  CATEGORY_COLOR_OPTIONS,
 } from '@/domain/constants'
 import { CategoryIcon } from '@/components/finance/category-icon'
+import { AssetImage } from '@/components/finance/asset-image'
+import { IconPicker } from '@/components/finance/icon-picker'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -26,7 +26,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { MoneyInput } from '@/components/finance/money-input'
 import { usePriceRates } from '@/hooks/use-price-rates'
 import { cn } from '@/lib/utils'
-import type { Asset, CreateAssetInput } from '@/domain/types'
+import type { Asset, AssetType, CreateAssetInput } from '@/domain/types'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -125,6 +125,7 @@ export function AssetForm({
   const selectedColor = watch('color')
   const selectedIcon = watch('icon')
   const selectedCategory = watch('category') as AssetCategory | ''
+  const selectedName = watch('name')
   const selectedSatuan = watch('satuan')
   const includeInSaldo = watch('include_in_saldo')
   const isRupiah = selectedSatuan === 'rupiah'
@@ -167,11 +168,17 @@ export function AssetForm({
           <button
             type="button"
             onClick={() => setPickerOpen(true)}
-            className="mt-0.5 flex size-12 shrink-0 items-center justify-center rounded-2xl ring-2 ring-transparent transition-all hover:ring-border focus:outline-none focus:ring-border"
-            style={{ backgroundColor: selectedColor }}
+            className="mt-0.5 shrink-0 rounded-2xl ring-2 ring-transparent transition-all hover:ring-border focus:outline-none focus:ring-border"
             aria-label="Pilih ikon dan warna"
           >
-            <CategoryIcon icon={selectedIcon} className="size-5 text-white drop-shadow-sm" />
+            <AssetImage
+              type={(selectedCategory || 'bank') as AssetType}
+              name={selectedName}
+              icon={selectedIcon}
+              color={selectedColor}
+              size="lg"
+              className="rounded-2xl"
+            />
           </button>
           <div className="flex-1 space-y-1">
             <Input placeholder="cth. BCA Tabungan" autoFocus {...register('name')} />
@@ -347,62 +354,15 @@ export function AssetForm({
         )}
       </form>
 
-      {/* Icon + Color Picker */}
-      <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Ikon &amp; Warna</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="flex justify-center">
-              <div className="flex size-16 items-center justify-center rounded-2xl" style={{ backgroundColor: selectedColor }}>
-                <CategoryIcon icon={selectedIcon} className="size-7 text-white drop-shadow-sm" />
-              </div>
-            </div>
-            <div>
-              <p className="mb-2 text-xs font-medium text-muted-foreground">Ikon</p>
-              <div className="grid grid-cols-8 gap-1">
-                {CATEGORY_ICON_OPTIONS.map((icon) => (
-                  <button
-                    key={icon}
-                    type="button"
-                    onClick={() => setValue('icon', icon)}
-                    className={cn(
-                      'flex size-9 items-center justify-center rounded-lg transition-colors',
-                      selectedIcon === icon
-                        ? 'bg-accent text-accent-foreground ring-2 ring-accent'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                    )}
-                    aria-label={icon}
-                  >
-                    <CategoryIcon icon={icon} className="size-4" />
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <p className="mb-2 text-xs font-medium text-muted-foreground">Warna</p>
-              <div className="flex flex-wrap gap-2">
-                {CATEGORY_COLOR_OPTIONS.map((color) => (
-                  <button
-                    key={color}
-                    type="button"
-                    onClick={() => setValue('color', color)}
-                    className="relative size-8 rounded-full transition-transform hover:scale-110"
-                    style={{ backgroundColor: color }}
-                    aria-label={`Pilih warna ${color}`}
-                  >
-                    {selectedColor === color && (
-                      <Check className="absolute inset-0 m-auto size-4 text-white drop-shadow" strokeWidth={3} aria-hidden="true" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <Button className="w-full" onClick={() => setPickerOpen(false)}>Selesai</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Icon + Color Picker — shared modal (brand logos + common icons + colors) */}
+      <IconPicker
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        icon={selectedIcon}
+        color={selectedColor}
+        onIconChange={(v) => setValue('icon', v)}
+        onColorChange={(v) => setValue('color', v)}
+      />
 
       {/* Tipe Aset Picker */}
       <Dialog open={typePickerOpen} onOpenChange={setTypePickerOpen}>

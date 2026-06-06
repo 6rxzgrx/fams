@@ -22,6 +22,7 @@ import {
 
 import { AddTransactionDialog } from '@/components/nav/add-transaction-dialog';
 import { PageContainer } from '@/components/layout/page-container';
+import { PageHeader } from '@/components/layout/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TransactionItem } from '@/components/finance/transaction-item';
 import { CashflowChart } from '@/components/finance/cashflow-chart';
@@ -31,7 +32,7 @@ import { StatusChip } from '@/components/finance/status-chip';
 
 import { useAccounts } from '@/hooks/use-accounts';
 import { useAssets } from '@/hooks/use-assets';
-import { useBills } from '@/hooks/use-bills';
+import { useBills, useBillPayments } from '@/hooks/use-bills';
 import { useBudgets } from '@/hooks/use-budgets';
 import { useCategories } from '@/hooks/use-categories';
 import { useTransactions } from '@/hooks/use-transactions';
@@ -40,9 +41,10 @@ import { usePriceRates } from '@/hooks/use-price-rates';
 import { formatMoney, formatMoneyCompact } from '@/lib/money';
 import { cn } from '@/lib/utils';
 import { getMonthRange, sumByType } from '@/domain/transactions';
+import { getBillStatus } from '@/domain/bills';
 import { BUDGET_TYPE_LABELS, BUDGET_TYPE_COLORS } from '@/domain/constants';
 import { buildRegistryDataLegacy } from '@/components/finance/asset-registry-shared';
-import type { Bill, BudgetType } from '@/domain/types';
+import type { Bill, BillPayment, BudgetType } from '@/domain/types';
 import type { Transaction, TransactionCategory } from '@/domain/types';
 
 function currentYM() {
@@ -104,6 +106,7 @@ export default function RingkasanPage() {
 	const { accounts, isLoading: accountsLoading } = useAccounts();
 	const { assets, isLoading: assetsLoading } = useAssets();
 	const { bills, isLoading: billsLoading } = useBills();
+	const { payments: billPayments, isLoading: billPaymentsLoading } = useBillPayments(month);
 	const { categories } = useCategories();
 	const { budgets } = useBudgets(month);
 	const { rates } = usePriceRates();
@@ -271,18 +274,13 @@ export default function RingkasanPage() {
 	const budgetRemaining = totalBudget - totalBudgetSpent;
 
 	return (
-		<PageContainer className="space-y-5 lg:space-y-6">
-			{/* ─── Header ───────────────────────────────────────────── */}
-			<header className="flex items-end justify-between gap-3">
-				<div className="min-w-0">
-					<h1 className="truncate text-[22px] font-semibold leading-tight tracking-tight lg:text-[28px]">
-						Ringkasan Keuangan
-					</h1>
-					<p className="mt-0.5 hidden text-[13px] text-muted-foreground lg:block">
-						Money is money, but not all money is the same. So control!
-					</p>
-				</div>
-				<div className="flex shrink-0 items-center gap-2">
+		<>
+			<PageHeader
+				variant="root"
+				showAvatar
+				title="Ringkasan Keuangan"
+				subtitle="Money is money, but not all money is the same. So control!"
+				action={
 					<button
 						type="button"
 						onClick={() => setManualOpen(true)}
@@ -291,9 +289,9 @@ export default function RingkasanPage() {
 						<Plus className="size-4" strokeWidth={2.5} aria-hidden="true" />
 						Tambah transaksi
 					</button>
-				</div>
-			</header>
-
+				}
+			/>
+			<PageContainer underHeader className="space-y-5 lg:space-y-6">
 			{/* ─── Hero: money left + total kekayaan ────── */}
 			{/* Mobile: horizontal snap scroll; Desktop: 3fr/1fr grid */}
 			<div className="flex snap-x snap-mandatory overflow-x-auto gap-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:grid lg:grid-cols-[3fr_1fr] lg:overflow-visible lg:items-stretch">
@@ -353,7 +351,12 @@ export default function RingkasanPage() {
 
 				{/* Right col (2fr): Tagihan → Transaksi Terbaru */}
 				<div className="space-y-4 lg:flex-[2] lg:space-y-5">
-					<BillsCard bills={bills} isLoading={billsLoading} />
+					<BillsCard
+						bills={bills}
+						payments={billPayments}
+						month={month}
+						isLoading={billsLoading || billPaymentsLoading}
+					/>
 					<RecentTxCard
 						transactions={recentTx}
 						categories={categories}
@@ -364,6 +367,7 @@ export default function RingkasanPage() {
 
 			<AddTransactionDialog open={manualOpen} onOpenChange={setManualOpen} />
 		</PageContainer>
+		</>
 	);
 }
 
@@ -556,23 +560,29 @@ function MoneyLeftCard({
 				).map(({ label, value, Icon, iconCls }) => (
 					<div
 						key={label}
-						className="flex items-center gap-3 rounded-xl border border-black/10 bg-black/6 px-3.5 py-3"
+						className="min-w-0 rounded-xl border border-black/10 bg-black/6 px-3.5 py-3"
 					>
-						<span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-black/85">
-							<Icon
-								className={cn('size-3.5', iconCls)}
-								strokeWidth={2}
-								aria-hidden
-							/>
-						</span>
-						<div className="min-w-0 flex-1">
-							<p className="text-[9.5px] font-bold uppercase tracking-[0.08em] opacity-65">
-								{label} bulan ini
-							</p>
-							<p className="mt-0.5 text-[17px] font-bold tabular-nums leading-tight tracking-tight lg:text-[20px]">
-								{loading ? '—' : formatMoneyCompact(value)}
+						<div className="flex items-center gap-1.5">
+							<span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-black/85">
+								<Icon
+									className={cn('size-3', iconCls)}
+									strokeWidth={2}
+									aria-hidden
+								/>
+							</span>
+							<p className="min-w-0 truncate text-[9.5px] font-bold uppercase tracking-[0.08em] opacity-65">
+								{label}
 							</p>
 						</div>
+						<p
+							className="mt-1.5 truncate text-[18px] font-bold tabular-nums leading-tight tracking-tight lg:text-[20px]"
+							title={loading ? undefined : formatMoney(value)}
+						>
+							{loading ? '—' : formatMoneyCompact(value)}
+						</p>
+						<p className="mt-0.5 text-[9px] font-medium uppercase tracking-[0.06em] opacity-45">
+							Bulan ini
+						</p>
 					</div>
 				))}
 			</div>
@@ -964,17 +974,6 @@ function CashflowCard({
 /* ─────────────────────────────────────────────────────────────
    Bills card
    ──────────────────────────────────────────────────────────── */
-function billDueStatus(dateStr: string): 'overdue' | 'due-soon' | 'unpaid' {
-	const today = new Date();
-	today.setHours(0, 0, 0, 0);
-	const due = new Date(dateStr);
-	due.setHours(0, 0, 0, 0);
-	const diff = Math.ceil((due.getTime() - today.getTime()) / 86_400_000);
-	if (diff < 0) return 'overdue';
-	if (diff <= 7) return 'due-soon';
-	return 'unpaid';
-}
-
 function formatBillDue(dateStr: string): string {
 	try {
 		return new Date(dateStr).toLocaleDateString('id-ID', {
@@ -988,30 +987,42 @@ function formatBillDue(dateStr: string): string {
 
 function BillsCard({
 	bills,
+	payments,
+	month,
 	isLoading,
 }: {
 	bills: Bill[];
+	payments: BillPayment[];
+	month: string;
 	isLoading: boolean;
 }) {
-	const today = new Date();
-	today.setHours(0, 0, 0, 0);
-	const in30 = new Date(today);
-	in30.setDate(today.getDate() + 30);
+	// Mirror the Tagihan page exactly: same month scope (current month), same
+	// status logic. The bills page filters by due_date.startsWith(month) and
+	// fetches payments for that same month, so we do too — otherwise paid/overdue
+	// status drifts (a single-month payments fetch can't resolve other months).
+	const monthBills = bills.filter(
+		(b) => !b.deleted_at && b.due_date.startsWith(month),
+	);
 
-	const upcoming = bills
-		.filter((b) => {
-			if (b.deleted_at) return false;
-			const due = new Date(b.due_date);
-			due.setHours(0, 0, 0, 0);
-			return due <= in30;
+	const upcoming = monthBills
+		.map((b) => ({ bill: b, status: getBillStatus(b, payments, month) }))
+		.sort((a, b) => {
+			// Unpaid first (overdue → due-soon → unpaid), paid last; then by due date.
+			const rank: Record<string, number> = {
+				overdue: 0,
+				'due-soon': 1,
+				unpaid: 2,
+				paid: 3,
+			};
+			const d = rank[a.status] - rank[b.status];
+			return d !== 0 ? d : a.bill.due_date.localeCompare(b.bill.due_date);
 		})
-		.sort((a, b) => a.due_date.localeCompare(b.due_date))
 		.slice(0, 5);
 
 	return (
 		<Card>
 			<CardHead
-				eyebrow="30 hari ke depan"
+				eyebrow={fullMonthLabel(month)}
 				title="Tagihan"
 				actionHref="/finance/bills"
 				actionLabel="Semua"
@@ -1033,7 +1044,7 @@ function BillsCard({
 					</span>
 					<p className="text-sm font-semibold">Tidak ada tagihan</p>
 					<p className="mt-1 max-w-[200px] text-[12.5px] text-muted-foreground">
-						Tidak ada tagihan dalam 30 hari ke depan.
+						Tidak ada tagihan jatuh tempo di {fullMonthLabel(month)}.
 					</p>
 					<Link
 						href="/finance/bills"
@@ -1045,7 +1056,7 @@ function BillsCard({
 				</div>
 			) : (
 				<ul className="divide-y divide-border">
-					{upcoming.map((bill) => (
+					{upcoming.map(({ bill, status }) => (
 						<li key={bill.id} className="flex items-center gap-3 py-3">
 							<div className="min-w-0 flex-1">
 								<p className="truncate text-[13px] font-semibold">
@@ -1059,7 +1070,7 @@ function BillsCard({
 								<p className="mb-1 text-[13px] font-bold tabular-nums">
 									{formatMoneyCompact(parseInt(bill.amount, 10) || 0)}
 								</p>
-								<StatusChip status={billDueStatus(bill.due_date)} />
+								<StatusChip status={status} />
 							</div>
 						</li>
 					))}
@@ -1304,9 +1315,9 @@ function RecentTxCard({
 					Belum ada transaksi.
 				</p>
 			) : (
-				<ul className="divide-y divide-border">
+				<ul className="-mx-5 divide-y divide-border lg:-mx-6">
 					{transactions.slice(0, 5).map((tx) => (
-						<li key={tx.id} className="py-1">
+						<li key={tx.id}>
 							<TransactionItem transaction={tx} categories={categories} />
 						</li>
 					))}

@@ -107,9 +107,9 @@ function ManualRateRow({
   return (
     <div className="flex items-center gap-3 px-4 py-3">
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-sm font-semibold">{rate.symbol}</span>
-          <span className="text-xs text-muted-foreground">·</span>
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="shrink-0 font-mono text-sm font-semibold">{rate.symbol}</span>
+          <span className="shrink-0 text-xs text-muted-foreground">·</span>
           <span className="truncate text-sm">{rate.label}</span>
         </div>
         <div className="mt-0.5 flex items-baseline gap-1.5">

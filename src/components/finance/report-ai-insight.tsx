@@ -48,7 +48,15 @@ export function ReportAiInsight({ month, summary, className }: Props) {
 
   async function handleGenerate() {
     const res = await trigger({ month, summary })
-    if (res?.ok) mutate()
+    if (res?.ok) {
+      // Push the freshly generated insight into the SWR cache immediately so the
+      // new text replaces the old one without waiting for a refetch — regenerate
+      // works even when an insight already exists in the database.
+      await mutate(
+        { ok: true, data: { month, insight: res.data.insight, generated_at: res.data.generated_at } },
+        { revalidate: false },
+      )
+    }
   }
 
   const generatedLabel = generatedAt

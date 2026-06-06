@@ -11,7 +11,6 @@ import {
 	CalendarDays,
 	Wallet,
 	Filter,
-	ChevronDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -27,12 +26,12 @@ import {
 	DialogTitle,
 } from '@/components/ui/dialog';
 import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-	DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu';
+	Sheet,
+	SheetContent,
+	SheetHeader,
+	SheetTitle,
+	SheetFooter,
+} from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/sections/empty-state';
 import { ErrorState } from '@/components/sections/error-state';
@@ -40,6 +39,7 @@ import { TransactionItem } from '@/components/finance/transaction-item';
 import { TransactionForm } from '@/components/finance/transaction-form';
 import { MoneyDisplay } from '@/components/finance/money-display';
 import { MonthPicker } from '@/components/finance/month-picker';
+import { AccountOption } from '@/components/finance/account-option';
 import { getRangeForPreset } from '@/components/finance/period-picker';
 import type {
 	PeriodPreset,
@@ -54,9 +54,10 @@ import {
 import { useCategories } from '@/hooks/use-categories';
 import { useAccounts } from '@/hooks/use-accounts';
 import { groupByDate, getMonthRange } from '@/domain/transactions';
+import { formatMoneyCompact } from '@/lib/money';
 import type { Transaction, CreateTransactionInput } from '@/domain/types';
 import { PageContainer } from '@/components/layout/page-container';
-import { MobileBackButton } from '@/components/nav/mobile-back-button';
+import { PageHeader } from '@/components/layout/page-header';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -146,19 +147,39 @@ function TxListSkeleton() {
 	);
 }
 
+function FilterSummaryChip({
+	icon: Icon,
+	label,
+	onClick,
+}: {
+	icon: typeof Calendar;
+	label: string;
+	onClick: () => void;
+}) {
+	return (
+		<button
+			type="button"
+			onClick={onClick}
+			className="inline-flex h-[36px] max-w-[170px] shrink-0 items-center gap-1.5 rounded-[11px] border border-accent/30 bg-accent/10 px-3 text-[12.5px] font-semibold text-accent"
+		>
+			<Icon className="size-[13px] shrink-0" strokeWidth={2} aria-hidden="true" />
+			<span className="truncate">{label}</span>
+		</button>
+	);
+}
+
 export default function TransactionsPage() {
 	const [month, setMonth] = useState(currentYM);
 	const [periodPreset, setPeriodPreset] = useState<PeriodPreset>('this_month');
 	const [customRange, setCustomRange] = useState<DateRange>(thisMonthRange);
 	const [customFrom, setCustomFrom] = useState(thisMonthRange().from);
 	const [customTo, setCustomTo] = useState(thisMonthRange().to);
-	const [customDialogOpen, setCustomDialogOpen] = useState(false);
 
 	const [accountId, setAccountId] = useState('');
 	const [categoryId, setCategoryId] = useState('');
 	const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
 
-	const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
+	const [filterOpen, setFilterOpen] = useState(false);
 	const [addOpen, setAddOpen] = useState(false);
 	const [editTx, setEditTx] = useState<Transaction | null>(null);
 
@@ -235,6 +256,18 @@ export default function TransactionsPage() {
 
 	const hasFilters = typeFilter !== 'all' || accountId || categoryId;
 
+	// Filters that live inside the Filter sheet (period/range/account/category).
+	const activeFilterCount =
+		(periodPreset !== 'this_month' ? 1 : 0) +
+		(accountId ? 1 : 0) +
+		(categoryId ? 1 : 0);
+
+	function resetFilters() {
+		setPeriodPreset('this_month');
+		setAccountId('');
+		setCategoryId('');
+	}
+
 	async function handleCreate(data: CreateTransactionInput) {
 		const res = await createTx(data);
 		if (!res.ok) {
@@ -277,7 +310,6 @@ export default function TransactionsPage() {
 	function applyCustomRange() {
 		setPeriodPreset('custom');
 		setCustomRange({ from: customFrom, to: customTo });
-		setCustomDialogOpen(false);
 	}
 
 	function handleMonthChange(ym: string) {
@@ -290,38 +322,6 @@ export default function TransactionsPage() {
 		setCustomTo(mTo);
 	}
 
-	// ── Shared filter dropdowns content ─────────────────────────────────────────
-
-	const periodDropdown = (align: 'start' | 'end' = 'start') => (
-		<DropdownMenuContent align={align}>
-			{(
-				['this_month', 'last_month', '3_months', '6_months'] as PeriodPreset[]
-			).map((p) => (
-				<DropdownMenuItem key={p} onClick={() => applyPreset(p)}>
-					{PRESET_LABELS[p]}
-				</DropdownMenuItem>
-			))}
-			<DropdownMenuSeparator />
-			<DropdownMenuItem onClick={() => setCustomDialogOpen(true)}>
-				Rentang custom…
-			</DropdownMenuItem>
-		</DropdownMenuContent>
-	);
-
-	const accountDropdown = (align: 'start' | 'end' = 'start') => (
-		<DropdownMenuContent align={align} className="w-48">
-			<DropdownMenuItem onClick={() => setAccountId('')}>
-				Semua akun
-			</DropdownMenuItem>
-			{accounts.length > 0 && <DropdownMenuSeparator />}
-			{accounts.map((a) => (
-				<DropdownMenuItem key={a.id} onClick={() => setAccountId(a.id)}>
-					{a.name}
-				</DropdownMenuItem>
-			))}
-		</DropdownMenuContent>
-	);
-
 	// ── Shared type tabs ─────────────────────────────────────────────────────────
 
 	const typeTabs = (
@@ -332,17 +332,17 @@ export default function TransactionsPage() {
 					type="button"
 					onClick={() => setTypeFilter(tab.id)}
 					className={cn(
-						'flex flex-1 items-center justify-center gap-1.5 rounded-[10px] px-3 py-[7px] text-[12px] font-semibold transition-colors lg:rounded-lg lg:px-4',
+						'flex min-w-0 flex-1 items-center justify-center gap-1 rounded-[10px] px-2 py-[7px] text-[12px] font-semibold transition-colors lg:gap-1.5 lg:rounded-lg lg:px-4',
 						typeFilter === tab.id
 							? 'bg-accent text-accent-foreground'
 							: 'text-foreground hover:bg-muted',
 					)}
 				>
-					{tab.label}
+					<span className="truncate">{tab.label}</span>
 					{!isLoading && (
 						<span
 							className={cn(
-								'min-w-[18px] rounded-full px-1.5 text-[10px] font-bold tabular-nums',
+								'shrink-0 rounded-full px-1.5 text-[10px] font-bold tabular-nums',
 								typeFilter === tab.id
 									? 'bg-black/10 text-accent-foreground dark:bg-black/20'
 									: 'bg-muted-foreground/15 text-muted-foreground',
@@ -357,139 +357,87 @@ export default function TransactionsPage() {
 	);
 
 	return (
-		<PageContainer bleed>
-			{/* ── Unified Header ─────────────────────────────────────────────── */}
-			<header className="flex items-end justify-between gap-3 px-5 py-4 lg:px-0 lg:py-0 lg:pb-4">
-				<div className="min-w-0">
-					<MobileBackButton />
-					<h1 className="truncate text-[22px] font-semibold leading-tight tracking-tight lg:text-[28px]">
-						Transaksi
-					</h1>
-					{!isLoading && (
-						<p className="mt-0.5 hidden text-[13px] text-muted-foreground lg:block">
-							If we want rich, we need to spend rich (Track and Save!).
-						</p>
-					)}
-				</div>
-				<div className="flex shrink-0 items-center gap-2">
-					<MonthPicker value={month} onChange={handleMonthChange} />
-					<Button
-						variant="accent"
-						onClick={() => setAddOpen(true)}
-						className="hidden lg:inline-flex"
-					>
-						<Plus className="size-4" strokeWidth={2.5} aria-hidden="true" />
-						Tambah transaksi
-					</Button>
-				</div>
-			</header>
-
-			{/* Filter chips — mobile: horizontally scrollable; desktop: wrap row */}
-			<div className="flex gap-2 overflow-x-auto px-5 pb-3 lg:flex-wrap lg:overflow-visible lg:px-0 lg:pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-				{/* mobile Tambah button */}
+		<>
+			<PageHeader
+				variant="sub"
+				title="Transaksi"
+				subtitle="If we want rich, we need to spend rich (Track and Save!)."
+				backHref="/finance/dashboard"
+				crumbs={[
+					{ href: '/finance/dashboard', label: 'Keuangan' },
+					{ href: '/finance/transactions', label: 'Transaksi' },
+				]}
+				monthPicker={
+					<MonthPicker value={month} onChange={handleMonthChange} fullWidth />
+				}
+				action={
+					/* desktop only: month picker + full add button (mobile adds via the FAB) */
+					<div className="hidden items-center gap-2 lg:flex">
+						<MonthPicker value={month} onChange={handleMonthChange} />
+						<Button variant="accent" onClick={() => setAddOpen(true)}>
+							<Plus className="size-4" strokeWidth={2.5} aria-hidden="true" />
+							Tambah transaksi
+						</Button>
+					</div>
+				}
+			/>
+			<PageContainer bleed>
+			{/* Filter — single button + active-filter summary chips */}
+			<div className="flex items-center gap-2 overflow-x-auto px-5 pb-3 pt-3 lg:px-0 lg:pt-0 lg:pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 				<button
 					type="button"
-					onClick={() => setAddOpen(true)}
-					aria-label="Tambah transaksi"
-					className="inline-flex h-[34px] shrink-0 items-center gap-1.5 rounded-[11px] bg-accent px-[13px] text-[12.5px] font-bold text-accent-foreground lg:hidden"
-				>
-					<Plus className="size-[13px]" strokeWidth={2.5} aria-hidden="true" />
-					Tambah
-				</button>
-
-				{/* Period chip */}
-				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
-						<button
-							className={cn(
-								'inline-flex h-[34px] shrink-0 items-center gap-[7px] rounded-[11px] border px-[13px] text-[12.5px] font-semibold',
-								periodPreset !== 'this_month'
-									? 'border-accent/30 bg-accent/10 text-accent'
-									: 'border-border bg-surface text-foreground',
-							)}
-						>
-							<Calendar
-								className="size-[13px]"
-								strokeWidth={1.75}
-								aria-hidden="true"
-							/>
-							{periodPreset === 'custom'
-								? `${customRange.from} – ${customRange.to}`
-								: PRESET_LABELS[periodPreset]}
-							<ChevronDown
-								className="size-[11px]"
-								strokeWidth={2}
-								aria-hidden="true"
-							/>
-						</button>
-					</DropdownMenuTrigger>
-					{periodDropdown()}
-				</DropdownMenu>
-
-				{/* Custom range chip */}
-				<button
-					type="button"
-					onClick={() => setCustomDialogOpen(true)}
-					className="inline-flex h-[34px] shrink-0 items-center gap-[7px] rounded-[11px] border border-border bg-surface px-[12px] text-[12.5px] font-semibold text-foreground"
-				>
-					<CalendarDays
-						className="size-[13px] text-muted-foreground"
-						strokeWidth={1.75}
-						aria-hidden="true"
-					/>
-					Rentang
-				</button>
-
-				{/* Account chip */}
-				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
-						<button
-							className={cn(
-								'inline-flex h-[34px] shrink-0 items-center gap-[7px] rounded-[11px] border px-[13px] text-[12.5px] font-semibold',
-								accountId
-									? 'border-accent/30 bg-accent/10 text-accent'
-									: 'border-border bg-surface text-foreground',
-							)}
-						>
-							<Wallet
-								className="size-[13px] text-muted-foreground"
-								strokeWidth={1.75}
-								aria-hidden="true"
-							/>
-							{selectedAccount ? selectedAccount.name : 'Semua akun'}
-							<ChevronDown
-								className="size-[11px] text-muted-foreground"
-								strokeWidth={2}
-								aria-hidden="true"
-							/>
-						</button>
-					</DropdownMenuTrigger>
-					{accountDropdown()}
-				</DropdownMenu>
-
-				{/* Category chip */}
-				<button
-					type="button"
-					onClick={() => setCategoryDialogOpen(true)}
+					onClick={() => setFilterOpen(true)}
 					className={cn(
-						'inline-flex h-[34px] shrink-0 items-center gap-[7px] rounded-[11px] border px-[13px] pr-4 text-[12.5px] font-semibold',
-						categoryId
-							? 'border-accent/30 bg-accent/10 text-accent'
-							: 'border-border bg-surface text-foreground',
+						'inline-flex h-[36px] shrink-0 items-center gap-2 rounded-[11px] border px-3.5 text-[13px] font-semibold transition-colors',
+						activeFilterCount > 0
+							? 'border-accent bg-accent text-accent-foreground'
+							: 'border-border bg-surface text-foreground hover:bg-muted',
 					)}
 				>
-					<Filter
-						className="size-[13px] text-muted-foreground"
-						strokeWidth={1.75}
-						aria-hidden="true"
-					/>
-					{selectedCategory ? selectedCategory.name : 'Semua kategori'}
-					<ChevronDown
-						className="size-[11px] text-muted-foreground"
-						strokeWidth={2}
-						aria-hidden="true"
-					/>
+					<Filter className="size-4" strokeWidth={2} aria-hidden="true" />
+					Filter
+					{activeFilterCount > 0 && (
+						<span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-black/15 px-1.5 text-[11px] font-bold tabular-nums dark:bg-black/25">
+							{activeFilterCount}
+						</span>
+					)}
 				</button>
+
+				{/* Read-only summary of what's active (tap any to open the sheet) */}
+				{periodPreset !== 'this_month' && (
+					<FilterSummaryChip
+						icon={Calendar}
+						label={
+							periodPreset === 'custom'
+								? `${customRange.from} – ${customRange.to}`
+								: PRESET_LABELS[periodPreset]
+						}
+						onClick={() => setFilterOpen(true)}
+					/>
+				)}
+				{selectedAccount && (
+					<FilterSummaryChip
+						icon={Wallet}
+						label={selectedAccount.name}
+						onClick={() => setFilterOpen(true)}
+					/>
+				)}
+				{selectedCategory && (
+					<FilterSummaryChip
+						icon={CalendarDays}
+						label={selectedCategory.name}
+						onClick={() => setFilterOpen(true)}
+					/>
+				)}
+				{activeFilterCount > 0 && (
+					<button
+						type="button"
+						onClick={resetFilters}
+						className="inline-flex h-[36px] shrink-0 items-center text-[12.5px] font-semibold text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+					>
+						Reset
+					</button>
+				)}
 			</div>
 
 			{/* ══════════════════════════════════════════════════
@@ -512,12 +460,15 @@ export default function TransactionsPage() {
 									aria-hidden="true"
 								/>
 							</div>
-							<span className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+							<span className="truncate text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
 								Pemasukan
 							</span>
 						</div>
-						<p className="mt-2 text-[19px] font-bold tracking-tight text-success tabular-nums">
-							Rp {idrFmt(summary.totalIncome)}
+						<p
+							className="mt-2 truncate text-[19px] font-bold leading-tight tracking-tight text-success tabular-nums"
+							title={`Rp ${idrFmt(summary.totalIncome)}`}
+						>
+							{formatMoneyCompact(summary.totalIncome)}
 						</p>
 						<p className="mt-0.5 text-[11px] font-medium text-muted-foreground">
 							{summary.incomeCount} transaksi
@@ -533,12 +484,15 @@ export default function TransactionsPage() {
 									aria-hidden="true"
 								/>
 							</div>
-							<span className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+							<span className="truncate text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
 								Pengeluaran
 							</span>
 						</div>
-						<p className="mt-2 text-[19px] font-bold tracking-tight text-danger tabular-nums">
-							Rp {idrFmt(summary.totalExpense)}
+						<p
+							className="mt-2 truncate text-[19px] font-bold leading-tight tracking-tight text-danger tabular-nums"
+							title={`Rp ${idrFmt(summary.totalExpense)}`}
+						>
+							{formatMoneyCompact(summary.totalExpense)}
 						</p>
 						<p className="mt-0.5 text-[11px] font-medium text-muted-foreground">
 							{summary.expenseCount} transaksi
@@ -814,117 +768,153 @@ export default function TransactionsPage() {
           DIALOGS
       ══════════════════════════════════════════════════ */}
 
-			{/* Category filter */}
-			<Dialog open={categoryDialogOpen} onOpenChange={setCategoryDialogOpen}>
-				<DialogContent className="sm:max-w-sm">
-					<DialogHeader>
-						<DialogTitle>Pilih Kategori</DialogTitle>
-					</DialogHeader>
-					<div className="max-h-[60vh] overflow-y-auto -mx-1 px-1">
-						<button
-							type="button"
-							onClick={() => {
-								setCategoryId('');
-								setCategoryDialogOpen(false);
-							}}
-							className={cn(
-								'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[13.5px] font-semibold transition-colors hover:bg-muted',
-								!categoryId && 'bg-accent/10 text-accent',
-							)}
-						>
-							Semua kategori
-						</button>
-						{parentCats.map((parent) => {
-							const children = childCats(parent.id);
-							return (
-								<div key={parent.id} className="mt-3">
-									<p className="mb-1 px-3 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-										{parent.name}
-									</p>
-									{children.length > 0 ? (
-										children.map((child) => (
+			{/* Filter sheet — period / range / account / category in one place */}
+			<Sheet open={filterOpen} onOpenChange={setFilterOpen}>
+				<SheetContent
+					side="bottom"
+					className="max-h-[88vh] gap-0 rounded-t-2xl p-0 lg:inset-y-0 lg:right-0 lg:left-auto lg:h-full lg:max-h-none lg:w-[420px] lg:rounded-none"
+				>
+					<SheetHeader className="border-b border-border px-5 pb-4 pt-5">
+						<SheetTitle className="text-[17px]">Filter Transaksi</SheetTitle>
+					</SheetHeader>
+
+					<div className="flex-1 space-y-6 overflow-y-auto px-5 py-5">
+						{/* Periode */}
+						<section className="space-y-2.5">
+							<p className="text-eyebrow text-muted-foreground">Periode</p>
+							<div className="grid grid-cols-2 gap-2">
+								{(
+									['this_month', 'last_month', '3_months', '6_months'] as PeriodPreset[]
+								).map((p) => (
+									<button
+										key={p}
+										type="button"
+										onClick={() => applyPreset(p)}
+										className={cn(
+											'rounded-xl border px-3 py-2.5 text-left text-[13px] font-semibold transition-colors',
+											periodPreset === p
+												? 'border-accent bg-accent/10 text-accent'
+												: 'border-border bg-surface text-foreground hover:bg-muted',
+										)}
+									>
+										{PRESET_LABELS[p]}
+									</button>
+								))}
+							</div>
+							{/* Custom range */}
+							<div
+								className={cn(
+									'rounded-xl border p-3',
+									periodPreset === 'custom'
+										? 'border-accent bg-accent/5'
+										: 'border-border',
+								)}
+							>
+								<div className="grid grid-cols-2 gap-3">
+									<div className="grid gap-1.5">
+										<Label htmlFor="range-from" className="text-[11px] text-muted-foreground">Dari</Label>
+										<Input id="range-from" type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} />
+									</div>
+									<div className="grid gap-1.5">
+										<Label htmlFor="range-to" className="text-[11px] text-muted-foreground">Sampai</Label>
+										<Input id="range-to" type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} />
+									</div>
+								</div>
+								<Button variant="outline" size="sm" className="mt-3 w-full" onClick={applyCustomRange}>
+									Terapkan rentang custom
+								</Button>
+							</div>
+						</section>
+
+						{/* Akun */}
+						<section className="space-y-2">
+							<p className="text-eyebrow text-muted-foreground">Akun</p>
+							<button
+								type="button"
+								onClick={() => setAccountId('')}
+								className={cn(
+									'flex w-full items-center rounded-lg px-3 py-2.5 text-left text-[13.5px] font-semibold transition-colors hover:bg-muted',
+									!accountId && 'bg-accent/10 text-accent',
+								)}
+							>
+								Semua akun
+							</button>
+							{accounts.map((a) => (
+								<button
+									key={a.id}
+									type="button"
+									onClick={() => setAccountId(a.id)}
+									className={cn(
+										'flex w-full items-center rounded-lg px-3 py-2 text-left transition-colors hover:bg-muted',
+										accountId === a.id && 'bg-accent/10',
+									)}
+								>
+									<AccountOption account={a} />
+								</button>
+							))}
+						</section>
+
+						{/* Kategori */}
+						<section className="space-y-2">
+							<p className="text-eyebrow text-muted-foreground">Kategori</p>
+							<button
+								type="button"
+								onClick={() => setCategoryId('')}
+								className={cn(
+									'flex w-full items-center rounded-lg px-3 py-2.5 text-left text-[13.5px] font-semibold transition-colors hover:bg-muted',
+									!categoryId && 'bg-accent/10 text-accent',
+								)}
+							>
+								Semua kategori
+							</button>
+							{parentCats.map((parent) => {
+								const children = childCats(parent.id);
+								const rows = children.length > 0 ? children : [parent];
+								return (
+									<div key={parent.id} className="pt-1">
+										{children.length > 0 && (
+											<p className="mb-0.5 px-3 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+												{parent.name}
+											</p>
+										)}
+										{rows.map((cat) => (
 											<button
-												key={child.id}
+												key={cat.id}
 												type="button"
-												onClick={() => {
-													setCategoryId(child.id);
-													setCategoryDialogOpen(false);
-												}}
+												onClick={() => setCategoryId(cat.id)}
 												className={cn(
 													'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[13.5px] font-medium transition-colors hover:bg-muted',
-													categoryId === child.id &&
-														'bg-accent/10 font-semibold text-accent',
+													categoryId === cat.id && 'bg-accent/10 font-semibold text-accent',
 												)}
 											>
 												<span
 													className="size-2 shrink-0 rounded-full"
-													style={{ backgroundColor: child.color || '#64748b' }}
+													style={{ backgroundColor: cat.color || '#64748b' }}
 												/>
-												{child.name}
+												<span className="truncate">{cat.name}</span>
 											</button>
-										))
-									) : (
-										<button
-											type="button"
-											onClick={() => {
-												setCategoryId(parent.id);
-												setCategoryDialogOpen(false);
-											}}
-											className={cn(
-												'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[13.5px] font-medium transition-colors hover:bg-muted',
-												categoryId === parent.id &&
-													'bg-accent/10 font-semibold text-accent',
-											)}
-										>
-											<span
-												className="size-2 shrink-0 rounded-full"
-												style={{ backgroundColor: parent.color || '#64748b' }}
-											/>
-											{parent.name}
-										</button>
-									)}
-								</div>
-							);
-						})}
+										))}
+									</div>
+								);
+							})}
+						</section>
 					</div>
-				</DialogContent>
-			</Dialog>
 
-			{/* Custom range */}
-			<Dialog open={customDialogOpen} onOpenChange={setCustomDialogOpen}>
-				<DialogContent className="sm:max-w-sm">
-					<DialogHeader>
-						<DialogTitle>Pilih Rentang Tanggal</DialogTitle>
-					</DialogHeader>
-					<div className="grid gap-4 py-2">
-						<div className="grid gap-1.5">
-							<Label htmlFor="range-from">Dari</Label>
-							<Input
-								id="range-from"
-								type="date"
-								value={customFrom}
-								onChange={(e) => setCustomFrom(e.target.value)}
-							/>
-						</div>
-						<div className="grid gap-1.5">
-							<Label htmlFor="range-to">Sampai</Label>
-							<Input
-								id="range-to"
-								type="date"
-								value={customTo}
-								onChange={(e) => setCustomTo(e.target.value)}
-							/>
-						</div>
-					</div>
-					<Button
-						variant="accent"
-						className="w-full"
-						onClick={applyCustomRange}
-					>
-						Terapkan
-					</Button>
-				</DialogContent>
-			</Dialog>
+					<SheetFooter className="flex-row gap-3 border-t border-border px-5 py-4">
+						<Button
+							variant="outline"
+							className="flex-1"
+							onClick={resetFilters}
+							disabled={activeFilterCount === 0}
+						>
+							Reset
+						</Button>
+						<Button variant="accent" className="flex-1" onClick={() => setFilterOpen(false)}>
+							Lihat {filtered.length} transaksi
+						</Button>
+					</SheetFooter>
+				</SheetContent>
+			</Sheet>
 
 			{/* Add */}
 			<Dialog open={addOpen} onOpenChange={setAddOpen}>
@@ -973,5 +963,6 @@ export default function TransactionsPage() {
 				</DialogContent>
 			</Dialog>
 		</PageContainer>
+		</>
 	);
 }

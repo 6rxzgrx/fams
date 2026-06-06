@@ -2,7 +2,13 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Tags, Briefcase, RefreshCw, History } from 'lucide-react'
+import { Tags, Briefcase, RefreshCw, History, ChevronDown, Check } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 
 const ITEMS = [
@@ -34,28 +40,62 @@ const ITEMS = [
 
 export function FinanceSetupNav() {
   const pathname = usePathname()
+  const current = ITEMS.find((i) => i.href === pathname) ?? ITEMS[0]
+  const CurrentIcon = current.icon
 
   return (
     <>
-      <div className="flex gap-2 overflow-x-auto pb-1 lg:hidden">
-        {ITEMS.map((item) => {
-          const active = pathname === item.href
-          const Icon = item.icon
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-current={active ? 'page' : undefined}
-              className={cn(
-                'inline-flex min-w-max items-center gap-2 rounded-pill px-4 py-3 text-sm font-semibold transition-colors',
-                active ? 'bg-accent text-accent-foreground' : 'bg-surface text-foreground',
-              )}
+      {/* Mobile: single button → dropdown list of sections */}
+      <div className="lg:hidden">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="flex w-full items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 text-left transition-colors hover:bg-muted"
             >
-              <Icon className="size-4" strokeWidth={active ? 2.25 : 1.9} aria-hidden="true" />
-              {item.label}
-            </Link>
-          )
-        })}
+              <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-pill bg-accent-soft text-accent">
+                <CurrentIcon className="size-4" strokeWidth={2.25} aria-hidden="true" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold">{current.label}</span>
+                <span className="block truncate text-[12px] text-muted-foreground">
+                  {current.description}
+                </span>
+              </span>
+              <ChevronDown className="size-4 shrink-0 text-muted-foreground" strokeWidth={2} aria-hidden="true" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="start"
+            className="w-[calc(100vw-2.5rem)] max-w-[420px]"
+          >
+            {ITEMS.map((item) => {
+              const active = item.href === current.href
+              const Icon = item.icon
+              return (
+                <DropdownMenuItem key={item.href} asChild>
+                  <Link href={item.href} aria-current={active ? 'page' : undefined} className="gap-3 py-2.5">
+                    <span
+                      className={cn(
+                        'inline-flex size-8 shrink-0 items-center justify-center rounded-pill',
+                        active ? 'bg-accent text-accent-foreground' : 'bg-muted text-foreground',
+                      )}
+                    >
+                      <Icon className="size-4" strokeWidth={2} aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-semibold">{item.label}</span>
+                      <span className="block truncate text-[12px] text-muted-foreground">
+                        {item.description}
+                      </span>
+                    </span>
+                    {active && <Check className="size-4 shrink-0 text-accent" strokeWidth={2.5} aria-hidden="true" />}
+                  </Link>
+                </DropdownMenuItem>
+              )
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <aside className="hidden lg:block">

@@ -12,7 +12,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <SidebarProvider defaultOpen>
       <AppSidebar className="hidden lg:flex" />
       <SidebarInset className="bg-background">
-        <main className="flex-1 pb-nav pt-safe lg:pb-10 lg:pt-0">{children}</main>
+        <main className="flex-1 pb-nav lg:pb-10 lg:pt-0">{children}</main>
       </SidebarInset>
       <BottomNav />
     </SidebarProvider>

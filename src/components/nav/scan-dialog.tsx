@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { Camera, ImagePlus, RotateCcw, Sparkles, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
@@ -8,6 +8,9 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { TransactionForm } from '@/components/finance/transaction-form'
 import { useCreateTransaction } from '@/hooks/use-transactions'
+import { useCategories } from '@/hooks/use-categories'
+import { useAccounts } from '@/hooks/use-accounts'
+import { getSelectableCategories, formatCategoryLabel } from '@/domain/categories'
 import { cn } from '@/lib/utils'
 import type { CreateTransactionInput } from '@/domain/types'
 
@@ -20,6 +23,7 @@ interface ExtractedData {
   date: string
   merchant: string
   category_hint: string
+  account_hint?: string
   confidence: number
   notes: string
 }
@@ -40,6 +44,15 @@ export function ScanDialog({ open, onOpenChange }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const { trigger: createTx, isMutating: saving } = useCreateTransaction()
+  const { categories } = useCategories()
+  const { accounts } = useAccounts()
+
+  // Real category paths + account names to give the AI as extraction context.
+  const categoryNames = useMemo(
+    () => getSelectableCategories(categories).map((c) => formatCategoryLabel(c, categories)),
+    [categories],
+  )
+  const accountNames = useMemo(() => accounts.map((a) => a.name), [accounts])
 
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop())
@@ -94,13 +107,20 @@ export function ScanDialog({ open, onOpenChange }: Props) {
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
+    // Reset so selecting the same file again still fires onChange.
+    e.target.value = ''
     if (!file) return
+    if (!file.type.startsWith('image/')) {
+      toast.error('Pilih berkas gambar (JPG/PNG).')
+      return
+    }
     const reader = new FileReader()
     reader.onload = () => {
       stopCamera()
       setCapturedImage(reader.result as string)
       setStep('preview')
     }
+    reader.onerror = () => toast.error('Gagal membaca gambar.')
     reader.readAsDataURL(file)
   }
 
@@ -109,10 +129,17 @@ export function ScanDialog({ open, onOpenChange }: Props) {
     setStep('extracting')
     try {
       const base64 = capturedImage.split(',')[1]
+      // Use the real mime type from the data URL (gallery uploads may be PNG, etc.).
+      const mimeType = capturedImage.match(/^data:([^;]+);/)?.[1] ?? 'image/jpeg'
       const res = await fetch('/api/ai/extract', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: base64, mimeType: 'image/jpeg' }),
+        body: JSON.stringify({
+          image: base64,
+          mimeType,
+          categories: categoryNames,
+          accounts: accountNames,
+        }),
       })
       const data = await res.json()
       if (!data.ok) throw new Error(data.error)
@@ -138,6 +165,30 @@ export function ScanDialog({ open, onOpenChange }: Props) {
     startCamera()
   }
 
+  // Resolve the AI hints back to real category / account IDs (best-effort match).
+  const matchedCategoryId = useMemo(() => {
+    const hint = extracted?.category_hint?.trim().toLowerCase()
+    if (!hint) return undefined
+    const norm = (s: string) => s.trim().toLowerCase()
+    const selectable = getSelectableCategories(categories)
+    // Try full path match, then leaf-name match, then substring.
+    return (
+      selectable.find((c) => norm(formatCategoryLabel(c, categories)) === hint)?.id ??
+      selectable.find((c) => norm(c.name) === hint.split('•').pop()!.trim())?.id ??
+      selectable.find((c) => hint.includes(norm(c.name)))?.id
+    )
+  }, [extracted, categories])
+
+  const matchedAccountId = useMemo(() => {
+    const hint = extracted?.account_hint?.trim().toLowerCase()
+    if (!hint) return undefined
+    const norm = (s: string) => s.trim().toLowerCase()
+    return (
+      accounts.find((a) => norm(a.name) === hint)?.id ??
+      accounts.find((a) => hint.includes(norm(a.name)) || norm(a.name).includes(hint))?.id
+    )
+  }, [extracted, accounts])
+
   const defaultFormValues = extracted
     ? {
         type: extracted.type,
@@ -145,6 +196,8 @@ export function ScanDialog({ open, onOpenChange }: Props) {
         description: extracted.merchant ? `${extracted.description} — ${extracted.merchant}` : extracted.description,
         date: extracted.date || format(new Date(), 'yyyy-MM-dd'),
         notes: extracted.notes,
+        ...(matchedCategoryId ? { category_id: matchedCategoryId } : {}),
+        ...(matchedAccountId ? { account_id: matchedAccountId } : {}),
       }
     : undefined
 
@@ -258,9 +311,17 @@ export function ScanDialog({ open, onOpenChange }: Props) {
           <div className="shrink-0 flex items-center justify-between gap-3 border-t border-border bg-background px-5 py-4">
             {step === 'camera' && (
               <>
-                <Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} aria-label="Pilih dari galeri">
-                  <ImagePlus className="size-5" strokeWidth={2} />
-                </Button>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex w-16 flex-col items-center gap-1 text-muted-foreground transition-colors hover:text-foreground"
+                  aria-label="Unggah dari galeri"
+                >
+                  <span className="flex size-11 items-center justify-center rounded-full border border-border bg-surface">
+                    <ImagePlus className="size-5" strokeWidth={2} />
+                  </span>
+                  <span className="text-[10.5px] font-semibold">Galeri</span>
+                </button>
                 <button
                   onClick={capturePhoto}
                   disabled={!!cameraError}
@@ -271,7 +332,8 @@ export function ScanDialog({ open, onOpenChange }: Props) {
                   )}
                   aria-label="Ambil foto"
                 />
-                <div className="size-10" />
+                {/* spacer to keep the shutter centered, matching the galeri button width */}
+                <div className="w-16" aria-hidden="true" />
               </>
             )}
             {step === 'preview' && (
@@ -289,11 +351,13 @@ export function ScanDialog({ open, onOpenChange }: Props) {
           </div>
         )}
 
+        {/* Upload-from-gallery input. No `capture` attribute so mobile shows the
+            full file/gallery chooser (live camera is handled separately by the
+            <video> capture flow above). */}
         <input
           ref={fileInputRef}
           type="file"
           accept="image/*"
-          capture="environment"
           className="sr-only"
           onChange={handleFileSelect}
         />
